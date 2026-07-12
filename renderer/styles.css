@@ -1,0 +1,52 @@
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  padding: 12px;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  background: #1e1e1e;
+  color: #eee;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+#chat-form {
+  flex-shrink: 0;
+}
+
+#message-input {
+  width: 100%;
+  padding: 10px 12px;
+  font-size: 14px;
+  border-radius: 8px;
+  border: 1px solid #444;
+  background: #2a2a2a;
+  color: #eee;
+  outline: none;
+}
+
+#message-input:focus {
+  border-color: #7c7cf0;
+}
+
+#response {
+  margin-top: 12px;
+  flex: 1;
+  overflow-y: auto;
+  white-space: pre-wrap;
+  font-size: 13px;
+  line-height: 1.5;
+  color: #ddd;
+}
+
+#response.error {
+  color: #f28b82;
+}
+
+#response.loading {
+  color: #999;
+  font-style: italic;
+}

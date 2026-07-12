@@ -1,0 +1,17 @@
+{
+  "name": "dispatch",
+  "version": "0.1.0",
+  "description": "Minimal always-on-top chat window backed by the Claude API",
+  "main": "main.js",
+  "private": true,
+  "scripts": {
+    "start": "electron ."
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.68.0",
+    "dotenv": "^17.2.3"
+  },
+  "devDependencies": {
+    "electron": "^33.0.0"
+  }
+}
