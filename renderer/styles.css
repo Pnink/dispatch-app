@@ -463,6 +463,10 @@ h1, h2, .display-font {
   z-index: 10;
 }
 
+.modal-backdrop[hidden] {
+  display: none;
+}
+
 .modal {
   background: var(--panel);
   border: 1px solid var(--gold-dim);
@@ -595,6 +599,417 @@ h1, h2, .display-font {
   border-radius: 8px;
   font-size: 13px;
   z-index: 20;
+}
+
+/* Tabs allow wrapping now that there are more of them */
+#tabs {
+  flex-wrap: wrap;
+}
+
+.subsection-title {
+  font-size: 12px;
+  color: var(--gold-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin: 14px 0 6px;
+}
+
+/* Character tab */
+#character-layout {
+  display: flex;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+#avatar-panel {
+  flex: 0 0 240px;
+}
+
+#avatar-svg-wrap {
+  background: var(--panel);
+  border: 1px solid var(--hairline);
+  border-radius: 10px;
+  padding: 10px;
+  display: flex;
+  justify-content: center;
+}
+
+.combat-stats-line {
+  margin-top: 10px;
+  font-size: 11px;
+  color: var(--dim);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.combat-stats-line span {
+  background: var(--panel-2);
+  border: 1px solid var(--hairline);
+  border-radius: 5px;
+  padding: 3px 7px;
+  color: var(--parchment);
+}
+
+.picker-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+
+.chip-btn {
+  background: var(--panel-2);
+  border: 1px solid var(--hairline);
+  color: var(--parchment);
+  border-radius: 6px;
+  padding: 5px 10px;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.chip-btn.active {
+  border-color: var(--gold);
+  color: var(--gold);
+}
+
+.color-chip {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 2px solid var(--hairline);
+  cursor: pointer;
+  padding: 0;
+}
+
+.color-chip.active {
+  border-color: var(--gold);
+}
+
+#slots-panel {
+  flex: 1;
+  min-width: 260px;
+}
+
+#free-claims-note {
+  font-size: 12px;
+  color: var(--gold);
+  margin-bottom: 10px;
+}
+
+#equipment-slots {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 8px;
+}
+
+.equip-slot-card {
+  background: var(--panel);
+  border: 1px solid var(--hairline);
+  border-radius: 8px;
+  padding: 10px 12px;
+  cursor: pointer;
+  text-align: left;
+}
+
+.equip-slot-card:hover {
+  border-color: var(--gold);
+}
+
+.equip-slot-label {
+  font-size: 10px;
+  color: var(--dim);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.equip-slot-value {
+  font-size: 13px;
+  margin-top: 3px;
+}
+
+.equip-slot-value.empty {
+  color: var(--dim);
+  font-style: italic;
+}
+
+/* Shop */
+#shop-family-tiles {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 14px;
+}
+
+.family-tile {
+  background: var(--panel);
+  border: 1px solid var(--hairline);
+  color: var(--parchment);
+  border-radius: 7px;
+  padding: 8px 14px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.family-tile.active {
+  border-color: var(--gold);
+  color: var(--gold);
+}
+
+#shop-item-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 10px;
+}
+
+.item-card {
+  background: var(--panel);
+  border: 1px solid var(--hairline);
+  border-radius: 10px;
+  padding: 10px;
+  position: relative;
+  overflow: hidden;
+}
+
+.item-card::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  background: var(--rarity-color, var(--hairline));
+}
+
+.item-card.owned {
+  opacity: 0.7;
+}
+
+.item-card.locked {
+  opacity: 0.5;
+}
+
+.item-card-head {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.item-icon-wrap {
+  width: 42px;
+  height: 42px;
+  flex-shrink: 0;
+  background: var(--panel-2);
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.item-icon-wrap svg {
+  width: 28px;
+  height: 28px;
+}
+
+.item-card-name {
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.item-card-rarity {
+  font-size: 10px;
+  text-transform: capitalize;
+  color: var(--dim);
+}
+
+.item-card-meta {
+  margin-top: 8px;
+  font-size: 11px;
+  color: var(--dim);
+  display: flex;
+  justify-content: space-between;
+}
+
+.item-card-note {
+  margin-top: 6px;
+  font-size: 10px;
+  color: var(--ember);
+}
+
+.item-card-actions {
+  margin-top: 8px;
+  display: flex;
+  gap: 6px;
+}
+
+.item-card-actions .action-btn {
+  flex: 1;
+  font-size: 11px;
+  padding: 6px 8px;
+}
+
+/* World Map */
+#map-location-line {
+  font-size: 13px;
+  color: var(--gold);
+  margin: 0 0 10px;
+}
+
+#travel-banner {
+  background: var(--panel);
+  border: 1px solid var(--gold-dim);
+  border-radius: 8px;
+  padding: 10px 14px;
+  font-size: 12px;
+  margin-bottom: 14px;
+  color: var(--parchment);
+}
+
+#village-list, #landmark-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.village-card, .landmark-card {
+  background: var(--panel);
+  border: 1px solid var(--hairline);
+  border-radius: 10px;
+  padding: 12px 14px;
+}
+
+.village-card.current {
+  border-color: var(--jade);
+}
+
+.village-name, .landmark-name {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.village-meta {
+  font-size: 11px;
+  color: var(--dim);
+  margin-top: 4px;
+}
+
+.landmark-card {
+  cursor: pointer;
+}
+
+.landmark-card:hover {
+  border-color: var(--gold);
+}
+
+/* Daily Draw */
+#wheel-slots {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(70px, 1fr));
+  gap: 6px;
+  margin-bottom: 14px;
+}
+
+.wheel-slot {
+  background: var(--panel);
+  border: 1px solid var(--hairline);
+  border-radius: 8px;
+  padding: 10px 4px;
+  text-align: center;
+  font-size: 11px;
+}
+
+.wheel-slot.bonus {
+  border-color: var(--gold);
+  color: var(--gold);
+}
+
+.wheel-slot.mythic {
+  border-color: var(--chakra-blue);
+  color: var(--chakra-blue);
+}
+
+.wheel-spin-btn {
+  width: 100%;
+  padding: 12px;
+  font-size: 14px;
+}
+
+#wheel-status {
+  margin-top: 10px;
+  font-size: 12px;
+  color: var(--dim);
+}
+
+#wheel-result {
+  margin-top: 10px;
+  font-size: 13px;
+  color: var(--gold);
+}
+
+/* People */
+#people-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 10px;
+}
+
+.person-card {
+  background: var(--panel);
+  border: 1px solid var(--hairline);
+  border-radius: 10px;
+  padding: 12px 14px;
+}
+
+.person-card.locked {
+  opacity: 0.45;
+}
+
+.person-name {
+  font-family: 'Yuji Syuku', serif;
+  font-size: 14px;
+  color: var(--gold);
+}
+
+.person-status {
+  margin-top: 4px;
+  font-size: 12px;
+  color: var(--parchment);
+}
+
+/* Picker / lore modal list */
+#picker-list {
+  max-height: 340px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 14px;
+}
+
+.picker-row-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--panel-2);
+  border: 1px solid var(--hairline);
+  border-radius: 7px;
+  padding: 8px 10px;
+  cursor: pointer;
+}
+
+.picker-row-item:hover {
+  border-color: var(--gold);
+}
+
+.picker-row-item.equipped {
+  border-color: var(--jade);
+}
+
+#lore-text {
+  font-size: 13px;
+  color: var(--dim);
+  line-height: 1.5;
 }
 
 /* Scrollbars */

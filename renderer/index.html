@@ -32,6 +32,11 @@
     <nav id="tabs">
       <button class="tab-btn active" data-tab="quests">Daily Quests</button>
       <button class="tab-btn" data-tab="story">Story Mode</button>
+      <button class="tab-btn" data-tab="character">Character</button>
+      <button class="tab-btn" data-tab="shop">Shop</button>
+      <button class="tab-btn" data-tab="map">World Map</button>
+      <button class="tab-btn" data-tab="wheel">Daily Draw</button>
+      <button class="tab-btn" data-tab="people">People</button>
       <button class="tab-btn" data-tab="achievements">Achievements</button>
     </nav>
 
@@ -50,6 +55,47 @@
       <section id="tab-story" class="tab-panel">
         <p id="story-marker-line"></p>
         <div id="chapter-list"></div>
+      </section>
+
+      <section id="tab-character" class="tab-panel">
+        <div id="character-layout">
+          <div id="avatar-panel">
+            <div id="avatar-svg-wrap"></div>
+            <div class="combat-stats-line" id="combat-stats-line"></div>
+            <h3 class="subsection-title">Hair</h3>
+            <div class="picker-row" id="hair-style-row"></div>
+            <div class="picker-row" id="hair-color-row"></div>
+          </div>
+          <div id="slots-panel">
+            <div id="free-claims-note"></div>
+            <div id="equipment-slots"></div>
+          </div>
+        </div>
+      </section>
+
+      <section id="tab-shop" class="tab-panel">
+        <div id="shop-family-tiles"></div>
+        <div id="shop-item-grid"></div>
+      </section>
+
+      <section id="tab-map" class="tab-panel">
+        <p id="map-location-line"></p>
+        <div id="travel-banner" hidden></div>
+        <h2 class="section-title">Villages</h2>
+        <div id="village-list"></div>
+        <h2 class="section-title">Landmarks</h2>
+        <div id="landmark-list"></div>
+      </section>
+
+      <section id="tab-wheel" class="tab-panel">
+        <div id="wheel-slots"></div>
+        <button id="spin-btn" class="action-btn wheel-spin-btn">Spin the Wheel</button>
+        <div id="wheel-status"></div>
+        <div id="wheel-result"></div>
+      </section>
+
+      <section id="tab-people" class="tab-panel">
+        <div id="people-list"></div>
       </section>
 
       <section id="tab-achievements" class="tab-panel">
@@ -81,8 +127,27 @@
       </div>
     </div>
 
+    <div id="picker-modal" class="modal-backdrop" hidden>
+      <div class="modal">
+        <h2 id="picker-title"></h2>
+        <div id="picker-list"></div>
+        <button id="picker-close-btn" class="battle-btn secondary">Close</button>
+      </div>
+    </div>
+
+    <div id="lore-modal" class="modal-backdrop" hidden>
+      <div class="modal">
+        <h2 id="lore-title"></h2>
+        <p id="lore-text"></p>
+        <button id="lore-close-btn" class="battle-btn secondary">Close</button>
+      </div>
+    </div>
+
     <div id="toast" hidden></div>
 
+    <script src="items.js"></script>
+    <script src="world.js"></script>
+    <script src="people.js"></script>
     <script src="data.js"></script>
     <script src="app.js"></script>
   </body>

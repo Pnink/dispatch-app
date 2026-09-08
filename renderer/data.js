@@ -308,5 +308,30 @@ const NINK_DATA = {
     { id: 'story-1', category: 'Story', label: 'Clear the Academy Graduation', check: (s) => s.story.clearedChapters.includes(1) },
     { id: 'story-15', category: 'Story', label: 'Clear the War Confrontation', check: (s) => s.story.clearedChapters.includes(15) },
     { id: 'story-hokage', category: 'Story', label: 'Become Hokage', check: (s) => s.story.hokageAchieved },
+    // Saga arcs: the doc names this category without defining its trigger beyond
+    // "the 4 two-year life-goal arcs" tied to the four life stats — interpreted
+    // here as each stat reaching a high sustained-effort milestone.
+    { id: 'arc-business', category: 'Life-Goal Arcs', label: 'Business Arc: 10,000 stat XP', check: (s) => (s.stats.business || 0) >= 10000 },
+    { id: 'arc-body', category: 'Life-Goal Arcs', label: 'Body Arc: 10,000 stat XP', check: (s) => (s.stats.body || 0) >= 10000 },
+    { id: 'arc-brand', category: 'Life-Goal Arcs', label: 'Brand Arc: 10,000 stat XP', check: (s) => (s.stats.brand || 0) >= 10000 },
+    { id: 'arc-mind', category: 'Life-Goal Arcs', label: 'Mind Arc: 10,000 stat XP', check: (s) => (s.stats.mind || 0) >= 10000 },
+    { id: 'gear-own1', category: 'Gear', label: 'Own 1 item', check: (s) => s.inventory.length >= 1 },
+    { id: 'gear-own5', category: 'Gear', label: 'Own 5 items', check: (s) => s.inventory.length >= 5 },
+    { id: 'gear-own10', category: 'Gear', label: 'Own 10 items', check: (s) => s.inventory.length >= 10 },
+    { id: 'gear-rare', category: 'Gear', label: 'Own a rare-or-better item', check: (s) => s.inventory.some((id) => {
+      const it = ITEMS.find((i) => i.id === id);
+      return it && ['rare', 'epic', 'legendary', 'mythic'].includes(it.rarity);
+    }) },
+    { id: 'gear-legendary', category: 'Gear', label: 'Own a legendary', check: (s) => s.inventory.some((id) => {
+      const it = ITEMS.find((i) => i.id === id);
+      return it && it.rarity === 'legendary';
+    }) },
+    { id: 'gear-fullloadout', category: 'Gear', label: 'Fill all 10 loadout slots', check: (s) => EQUIPMENT_SLOTS.every((slot) => !!s.equipped[slot]) },
+    { id: 'currency-1000', category: 'Currency & Wheel', label: 'Hold 1,000 ₽', check: (s) => s.ryo >= 1000 },
+    { id: 'currency-5000', category: 'Currency & Wheel', label: 'Hold 5,000 ₽', check: (s) => s.ryo >= 5000 },
+    { id: 'wheel-spin1', category: 'Currency & Wheel', label: 'Spin the wheel once', check: (s) => s.wheel.totalSpins >= 1 },
+    { id: 'wheel-spin30', category: 'Currency & Wheel', label: 'Spin the wheel 30 times', check: (s) => s.wheel.totalSpins >= 30 },
+    { id: 'wheel-item', category: 'Currency & Wheel', label: 'Win an item from the wheel', check: (s) => s.wheel.itemsWon.length >= 1 },
+    { id: 'wheel-mythic', category: 'Currency & Wheel', label: 'Win a Mythic artifact', check: (s) => s.wheel.mythicsWon.length >= 1 },
   ],
 };

@@ -1,9 +1,11 @@
-// The Nink Saga — Progress Tracker & Task Completer
+// The Nink Saga — full game client.
 // State lives in `state`, persisted to disk via the ninkSaga preload bridge.
 
 let state = null;
 let battle = null;
 let toastTimer = null;
+let shopActiveFamily = 'headband';
+let pendingSlot = null; // slot currently open in the equip picker
 
 // ---------- date + seeded RNG helpers ----------
 
@@ -51,6 +53,17 @@ function seededRandom(seedStr) {
   return mulberry32(seed);
 }
 
+function weightedIndex(n, rand, decay = 0.75) {
+  const weights = Array.from({ length: n }, (_, i) => Math.pow(decay, i));
+  const total = weights.reduce((a, b) => a + b, 0);
+  let r = rand() * total;
+  for (let i = 0; i < n; i++) {
+    r -= weights[i];
+    if (r <= 0) return i;
+  }
+  return n - 1;
+}
+
 function getDailySimpleQuests(dateStr) {
   const rand = seededRandom(dateStr + '|simple');
   const pool = [...NINK_DATA.simpleQuests];
@@ -83,6 +96,8 @@ function fmt(n) {
 // ---------- state ----------
 
 function defaultState() {
+  const equipped = {};
+  EQUIPMENT_SLOTS.forEach((slot) => (equipped[slot] = null));
   return {
     xp: 0,
     ryo: 0,
@@ -92,12 +107,20 @@ function defaultState() {
     daily: { date: todayStr(), completedIds: [] },
     story: { clearedChapters: [], beatsCleared: {}, hokageAchieved: false },
     achievementsUnlocked: [],
+    inventory: [],
+    equipped,
+    hair: { style: 'Spiky', color: '#1c1410' },
+    freeClaims: 0,
+    starterGranted: false,
+    world: { location: 'leaf', travelDestination: null, travelArrivalTs: null },
+    wheel: { lastSpinDate: null, totalSpins: 0, itemsWon: [], mythicsWon: [], lastResult: null },
   };
 }
 
 function normalizeState(loaded) {
   const base = defaultState();
   if (!loaded) return base;
+  const equipped = { ...base.equipped, ...(loaded.equipped || {}) };
   return {
     xp: loaded.xp ?? base.xp,
     ryo: loaded.ryo ?? base.ryo,
@@ -111,6 +134,13 @@ function normalizeState(loaded) {
       hokageAchieved: loaded.story?.hokageAchieved || false,
     },
     achievementsUnlocked: loaded.achievementsUnlocked || [],
+    inventory: loaded.inventory || [],
+    equipped,
+    hair: { ...base.hair, ...(loaded.hair || {}) },
+    freeClaims: loaded.freeClaims ?? 0,
+    starterGranted: loaded.starterGranted || false,
+    world: { ...base.world, ...(loaded.world || {}) },
+    wheel: { ...base.wheel, ...(loaded.wheel || {}) },
   };
 }
 
@@ -135,6 +165,57 @@ function currentRank(xp) {
     else break;
   }
   return rank;
+}
+
+// XP should always flow through here so rank-ups grant their free item claim
+// (section 6: "every time the player ranks up, they earn 1 free item claim").
+function gainXp(amount) {
+  const before = currentRank(state.xp).tier;
+  state.xp += amount;
+  const after = currentRank(state.xp).tier;
+  if (after > before) {
+    const gained = after - before;
+    state.freeClaims += gained;
+    toast(`🎉 Rank up! ${currentRank(state.xp).name} — ${gained} free item claim${gained > 1 ? 's' : ''} earned!`);
+  }
+}
+
+// 4.5 Starter Kit — auto-granted & equipped on a new game.
+function grantStarterKitIfNeeded() {
+  if (state.starterGranted) return;
+  STARTER_KIT_ITEM_IDS.forEach((id) => {
+    if (!state.inventory.includes(id)) state.inventory.push(id);
+    const item = ITEMS.find((i) => i.id === id);
+    const slot = ITEM_SLOT_BY_FAMILY[item.family];
+    state.equipped[slot] = id;
+  });
+  state.equipped.expression = STARTER_EXPRESSION_ID;
+  state.starterGranted = true;
+  persist();
+}
+
+// 4.4 Player combat stats, derived from currently equipped gear.
+function computeCombatStats() {
+  let maxHp = 100;
+  let shield = 0;
+  let weaponDamage = 5;
+  let assistDamage = 0;
+  let critChance = 0;
+  EQUIPMENT_SLOTS.forEach((slot) => {
+    const itemId = state.equipped[slot];
+    if (!itemId) return;
+    if (slot === 'expression') {
+      critChance += EXPRESSION_CRIT_BONUS;
+      return;
+    }
+    const item = ITEMS.find((i) => i.id === itemId);
+    if (!item) return;
+    if (item.stat.type === 'hp') maxHp += item.stat.value;
+    else if (item.stat.type === 'shield') shield += item.stat.value;
+    else if (item.stat.type === 'damage') weaponDamage = item.stat.value;
+    else if (item.stat.type === 'assist') assistDamage = item.stat.value;
+  });
+  return { maxHp, shield, weaponDamage, assistDamage, critChance };
 }
 
 // ---------- toast ----------
@@ -223,7 +304,7 @@ function renderQuests() {
 
 function completeQuest(quest) {
   if (state.daily.completedIds.includes(quest.id)) return;
-  state.xp += quest.xp;
+  gainXp(quest.xp);
   if (quest.ryo) state.ryo += quest.ryo;
   state.stats[quest.stat] = (state.stats[quest.stat] || 0) + quest.xp;
   state.daily.completedIds.push(quest.id);
@@ -249,6 +330,10 @@ function checkCoreStreak() {
 }
 
 // ---------- story mode ----------
+
+function isChapterReached(num) {
+  return num === 1 || state.story.clearedChapters.includes(num - 1) || state.story.clearedChapters.includes(num);
+}
 
 function chapterCardHTML(ch, rank) {
   const cleared = state.story.clearedChapters.includes(ch.num);
@@ -313,7 +398,8 @@ function renderStory() {
   const markerEl = document.getElementById('story-marker-line');
   const currentChapter = NINK_DATA.chapters.find((c) => !state.story.clearedChapters.includes(c.num));
   if (currentChapter) {
-    markerEl.innerHTML = `📖 Story marker: <span class="marker">${currentChapter.mapLocation}</span> — Chapter ${currentChapter.num}: ${currentChapter.title}`;
+    const loc = VILLAGES.find((v) => v.id === currentChapter.mapLocation) || LANDMARKS.find((l) => l.id === currentChapter.mapLocation);
+    markerEl.innerHTML = `📖 Story marker: <span class="marker">${loc ? loc.name : currentChapter.mapLocation}</span> — Chapter ${currentChapter.num}: ${currentChapter.title}`;
   } else {
     markerEl.textContent = '📖 The saga is complete. You are Hokage.';
   }
@@ -327,7 +413,7 @@ function completeBeat(chapterNum, beatIndex) {
   const arr = state.story.beatsCleared[chapterNum];
   if (beatIndex !== arr.length) return;
   arr.push(beatIndex);
-  state.xp += NINK_DATA.beatXp;
+  gainXp(NINK_DATA.beatXp);
   state.ryo += NINK_DATA.beatRyo;
   persist();
   toast(`+${NINK_DATA.beatXp} XP · +${NINK_DATA.beatRyo} ₽`);
@@ -338,7 +424,7 @@ function completeBeat(chapterNum, beatIndex) {
 }
 
 function becomeHokage(ch) {
-  state.xp += ch.xp;
+  gainXp(ch.xp);
   state.ryo += ch.ryo;
   state.story.clearedChapters.push(ch.num);
   state.story.hokageAchieved = true;
@@ -350,31 +436,23 @@ function becomeHokage(ch) {
   checkAchievements();
 }
 
-// ---------- battle ----------
+// ---------- battle (section 10) ----------
 
-// No shop/equipment in this tracker, so combat power scales off rank tier
-// instead (standing in for the starter kit + shop gear the full game would
-// have equipped by that point) plus whatever story skills are unlocked.
-// Calibrated so each chapter is beatable at its own unlock tier using base
-// attacks alone; skills exist to push through the harder late-game fights.
 function openBattle(chapter) {
-  const rank = currentRank(state.xp);
-  const playerMaxHp = 160 + rank.tier * 70;
-  const weaponDamage = 20 + rank.tier * 7;
-  const shield = 5 + rank.tier * 2;
+  const stats = computeCombatStats();
   const unlockedSkills = NINK_DATA.skills.filter((sk) => state.story.clearedChapters.includes(sk.unlocksAfterChapter));
   const skillUses = {};
   unlockedSkills.forEach((sk) => (skillUses[sk.id] = sk.usesPerBattle));
 
   battle = {
     chapter,
-    playerHp: playerMaxHp,
-    playerMaxHp,
+    playerHp: stats.maxHp,
+    playerMaxHp: stats.maxHp,
     bossHp: chapter.bossHp,
     bossMaxHp: chapter.bossHp,
-    weaponDamage,
-    shield,
-    critChance: 0.08,
+    baseDamage: stats.weaponDamage + stats.assistDamage,
+    shield: stats.shield,
+    critChance: stats.critChance,
     unlockedSkills,
     skillUses,
     over: false,
@@ -418,7 +496,7 @@ function renderBattle() {
 function doAttack(multiplier, label) {
   if (!battle || battle.over) return;
   const crit = Math.random() < battle.critChance;
-  const dmg = Math.round(battle.weaponDamage * multiplier * (crit ? 2 : 1));
+  const dmg = Math.round(battle.baseDamage * multiplier * (crit ? 2 : 1));
   battle.bossHp -= dmg;
   battleLog(`${label}: ${dmg} dmg${crit ? ' (CRIT!)' : ''} to ${battle.chapter.boss}`);
 
@@ -446,7 +524,7 @@ function doAttack(multiplier, label) {
 
 function onBattleWon() {
   const ch = battle.chapter;
-  state.xp += ch.xp;
+  gainXp(ch.xp);
   state.ryo += ch.ryo;
   state.story.clearedChapters.push(ch.num);
   persist();
@@ -460,6 +538,521 @@ function closeBattle() {
   document.getElementById('battle-modal').hidden = true;
   battle = null;
   renderStory();
+}
+
+// ---------- avatar (section 13.3) ----------
+
+const BROWS = {
+  flat: '<line x1="62" y1="34" x2="72" y2="34" stroke="#2a2118" stroke-width="2.5"/><line x1="88" y1="34" x2="98" y2="34" stroke="#2a2118" stroke-width="2.5"/>',
+  angry: '<line x1="62" y1="31" x2="72" y2="35" stroke="#2a2118" stroke-width="2.5"/><line x1="88" y1="35" x2="98" y2="31" stroke="#2a2118" stroke-width="2.5"/>',
+  up: '<line x1="62" y1="30" x2="72" y2="32" stroke="#2a2118" stroke-width="2.5"/><line x1="88" y1="32" x2="98" y2="30" stroke="#2a2118" stroke-width="2.5"/>',
+  worried: '<line x1="62" y1="35" x2="72" y2="31" stroke="#2a2118" stroke-width="2.5"/><line x1="88" y1="31" x2="98" y2="35" stroke="#2a2118" stroke-width="2.5"/>',
+  asym: '<line x1="62" y1="34" x2="72" y2="34" stroke="#2a2118" stroke-width="2.5"/><line x1="88" y1="31" x2="98" y2="33" stroke="#2a2118" stroke-width="2.5"/>',
+};
+
+const EYES = {
+  normal: '<circle cx="67" cy="40" r="2.6" fill="#2a2118"/><circle cx="93" cy="40" r="2.6" fill="#2a2118"/>',
+  closed: '<line x1="63" y1="40" x2="71" y2="40" stroke="#2a2118" stroke-width="2"/><line x1="89" y1="40" x2="97" y2="40" stroke="#2a2118" stroke-width="2"/>',
+  wide: '<circle cx="67" cy="39" r="3.6" fill="#2a2118"/><circle cx="93" cy="39" r="3.6" fill="#2a2118"/>',
+  wink: '<line x1="63" y1="40" x2="71" y2="40" stroke="#2a2118" stroke-width="2"/><circle cx="93" cy="40" r="2.6" fill="#2a2118"/>',
+};
+
+const MOUTHS = {
+  straight: '<line x1="72" y1="52" x2="88" y2="52" stroke="#2a2118" stroke-width="2"/>',
+  smile: '<path d="M71 50 Q80 57 89 50" stroke="#2a2118" stroke-width="2" fill="none"/>',
+  bigSmile: '<path d="M69 49 Q80 60 91 49 Z" fill="#3a2a1e" stroke="#2a2118" stroke-width="1.5"/><path d="M72 51 L88 51" stroke="#ece6d6" stroke-width="1.5"/>',
+  frown: '<path d="M71 55 Q80 49 89 55" stroke="#2a2118" stroke-width="2" fill="none"/>',
+  smirk: '<path d="M72 51 Q83 56 89 49" stroke="#2a2118" stroke-width="2" fill="none"/>',
+  openOval: '<ellipse cx="80" cy="53" rx="7" ry="6" fill="#3a2a1e" stroke="#2a2118" stroke-width="1.5"/>',
+  wavy: '<path d="M71 52 Q76 49 80 52 T89 52" stroke="#2a2118" stroke-width="2" fill="none"/>',
+};
+
+const EXPRESSION_FACE = {
+  neutral: { brow: 'flat', eyes: 'normal', mouth: 'straight' },
+  determined: { brow: 'angry', eyes: 'normal', mouth: 'straight' },
+  smirk: { brow: 'flat', eyes: 'normal', mouth: 'smirk' },
+  grin: { brow: 'up', eyes: 'normal', mouth: 'bigSmile' },
+  scowl: { brow: 'angry', eyes: 'normal', mouth: 'frown' },
+  sly: { brow: 'asym', eyes: 'normal', mouth: 'smirk' },
+  focus: { brow: 'angry', eyes: 'normal', mouth: 'straight' },
+  calm: { brow: 'flat', eyes: 'closed', mouth: 'straight' },
+  laugh: { brow: 'up', eyes: 'closed', mouth: 'openOval' },
+  shocked: { brow: 'up', eyes: 'wide', mouth: 'openOval' },
+  content: { brow: 'flat', eyes: 'closed', mouth: 'smile' },
+  smug: { brow: 'asym', eyes: 'normal', mouth: 'bigSmile' },
+  nervous: { brow: 'worried', eyes: 'normal', mouth: 'wavy' },
+  sad: { brow: 'worried', eyes: 'normal', mouth: 'frown' },
+  roar: { brow: 'angry', eyes: 'wide', mouth: 'bigSmile' },
+  wink: { brow: 'flat', eyes: 'wink', mouth: 'smirk' },
+};
+
+function hairShapeFront(style, color) {
+  switch (style) {
+    case 'Spiky':
+      return `<path d="M56 26 L61 8 L67 24 L72 6 L78 22 L84 6 L90 24 L96 8 L101 26 Q80 14 56 26 Z" fill="${color}"/>`;
+    case 'Messy':
+      return `<path d="M55 28 Q62 8 72 18 Q80 4 88 18 Q98 8 105 28 Q90 12 80 20 Q70 12 55 28 Z" fill="${color}"/>`;
+    case 'Buzzcut':
+      return `<path d="M58 28 Q80 20 102 28 Q99 24 80 22 Q61 24 58 28 Z" fill="${color}"/>`;
+    case 'Ponytail':
+    case 'Long':
+    case 'Short':
+    default:
+      return `<path d="M56 30 Q80 6 104 30 Q101 16 80 14 Q59 16 56 30 Z" fill="${color}"/>`;
+  }
+}
+
+function hairShapeBack(style, color) {
+  if (style === 'Ponytail') return `<path d="M100 24 Q118 30 112 58 Q108 46 98 40 Z" fill="${color}"/>`;
+  if (style === 'Long')
+    return `<path d="M58 30 Q52 70 58 100" stroke="${color}" stroke-width="9" fill="none" stroke-linecap="round"/><path d="M102 30 Q108 70 102 100" stroke="${color}" stroke-width="9" fill="none" stroke-linecap="round"/>`;
+  return '';
+}
+
+function itemIconSVG(item) {
+  const c = item.color;
+  const shapes = {
+    headband: `<rect x="4" y="11" width="20" height="6" rx="1" fill="${c}"/><rect x="11" y="10" width="6" height="8" fill="#2a2118"/>`,
+    hat: `<path d="M4 20 Q14 4 24 20 Z" fill="${c}"/><rect x="2" y="19" width="24" height="3" rx="1" fill="${c}"/>`,
+    top: `<path d="M8 6 L20 6 L24 12 L20 26 L8 26 L4 12 Z" fill="${c}"/>`,
+    bottom: `<path d="M9 4 L19 4 L20 26 L15 26 L14 14 L13 26 L8 26 Z" fill="${c}"/>`,
+    footwear: `<path d="M6 20 Q6 14 12 14 L20 14 Q24 14 24 20 L24 22 L6 22 Z" fill="${c}"/>`,
+    gloves: `<path d="M9 4 L19 4 L19 14 Q19 22 14 22 Q9 22 9 14 Z" fill="${c}"/>`,
+    kunai: `<path d="M14 2 L17 14 L14 18 L11 14 Z" fill="${c}"/><rect x="12.5" y="18" width="3" height="8" fill="#5a4632"/>`,
+    shuriken: `<path d="M14 2 L17 11 L26 14 L17 17 L14 26 L11 17 L2 14 L11 11 Z" fill="${c}"/>`,
+    otherWeapon: `<rect x="12" y="2" width="4" height="22" rx="1.5" fill="${c}"/><circle cx="14" cy="25" r="3" fill="${c}"/>`,
+    accessory: `<path d="M14 3 L22 14 L14 25 L6 14 Z" fill="${c}"/>`,
+    summon: `<circle cx="14" cy="14" r="11" fill="${c}"/><circle cx="14" cy="14" r="5" fill="#0c0f14" opacity="0.35"/>`,
+  };
+  const shape = shapes[item.family] || `<circle cx="14" cy="14" r="10" fill="${c}"/>`;
+  return `<svg viewBox="0 0 28 28" xmlns="http://www.w3.org/2000/svg">${shape}</svg>`;
+}
+
+function equippedItem(slot) {
+  return ITEMS.find((i) => i.id === state.equipped[slot]) || null;
+}
+
+function buildAvatarSVG() {
+  const topItem = equippedItem('top');
+  const bottomItem = equippedItem('bottom');
+  const footwearItem = equippedItem('footwear');
+  const glovesItem = equippedItem('gloves');
+  const headbandItem = equippedItem('headband');
+  const hatItem = equippedItem('hat');
+  const weaponItem = equippedItem('weapon');
+  const accessoryItem = equippedItem('accessory');
+  const summonItem = equippedItem('summon');
+  const exprItem = EXPRESSIONS.find((e) => e.id === state.equipped.expression) || EXPRESSIONS[0];
+
+  const skin = '#e0b28c';
+  const topColor = topItem ? topItem.color : '#3a3f4a';
+  const bottomColor = bottomItem ? bottomItem.color : '#2a2f3a';
+  const footwearColor = footwearItem ? footwearItem.color : '#3a2f28';
+  const glovesColor = glovesItem ? glovesItem.color : skin;
+  const hairColor = state.hair.color;
+
+  const face = EXPRESSION_FACE[exprItem.note] || EXPRESSION_FACE.neutral;
+
+  return `<svg viewBox="0 0 160 240" width="200" height="300" xmlns="http://www.w3.org/2000/svg">
+    ${summonItem ? `<circle cx="122" cy="58" r="9" fill="${summonItem.color}"/>` : ''}
+    ${hairShapeBack(state.hair.style, hairColor)}
+    <rect x="66" y="118" width="13" height="48" rx="4" fill="${bottomColor}"/>
+    <rect x="81" y="118" width="13" height="48" rx="4" fill="${bottomColor}"/>
+    <rect x="63" y="163" width="18" height="9" rx="3" fill="${footwearColor}"/>
+    <rect x="79" y="163" width="18" height="9" rx="3" fill="${footwearColor}"/>
+    <rect x="44" y="68" width="13" height="46" rx="6" fill="${topColor}"/>
+    <rect x="103" y="68" width="13" height="46" rx="6" fill="${topColor}"/>
+    <circle cx="50" cy="118" r="7" fill="${glovesColor}"/>
+    <circle cx="109" cy="118" r="7" fill="${glovesColor}"/>
+    ${weaponItem ? `<rect x="106" y="96" width="5" height="34" rx="2" fill="${weaponItem.color}" transform="rotate(25 109 113)"/>` : ''}
+    <rect x="58" y="64" width="44" height="58" rx="10" fill="${topColor}"/>
+    ${accessoryItem ? `<circle cx="96" cy="128" r="6" fill="${accessoryItem.color}"/>` : ''}
+    <path d="M68 64 Q80 72 92 64" stroke="#1c2128" stroke-width="3" fill="none"/>
+    <circle cx="80" cy="42" r="24" fill="${skin}"/>
+    ${BROWS[face.brow]}
+    ${EYES[face.eyes]}
+    ${MOUTHS[face.mouth]}
+    ${hairShapeFront(state.hair.style, hairColor)}
+    ${headbandItem ? `<rect x="58" y="30" width="44" height="7" rx="2" fill="${headbandItem.color}"/><rect x="76" y="29" width="8" height="9" fill="#c7ccd1"/>` : ''}
+    ${hatItem ? `<path d="M52 24 Q80 -2 108 24 Q106 14 80 12 Q54 14 52 24 Z" fill="${hatItem.color}"/><rect x="50" y="22" width="60" height="4" rx="2" fill="${hatItem.color}"/>` : ''}
+  </svg>`;
+}
+
+// ---------- character tab ----------
+
+function renderCharacter() {
+  document.getElementById('avatar-svg-wrap').innerHTML = buildAvatarSVG();
+  const stats = computeCombatStats();
+  document.getElementById('combat-stats-line').innerHTML = `
+    <span>❤ ${stats.maxHp} HP</span>
+    <span>🛡 ${stats.shield} Shield</span>
+    <span>⚔ ${stats.weaponDamage} Dmg</span>
+    <span>🐾 ${stats.assistDamage} Assist</span>
+    <span>✨ ${Math.round(stats.critChance * 100)}% Crit</span>
+  `;
+  document.getElementById('hair-style-row').innerHTML = HAIR_STYLES.map(
+    (s) => `<button class="chip-btn ${state.hair.style === s ? 'active' : ''}" data-hair-style="${s}">${s}</button>`
+  ).join('');
+  document.getElementById('hair-color-row').innerHTML = HAIR_COLORS.map(
+    (c) =>
+      `<button class="color-chip ${state.hair.color === c.hex ? 'active' : ''}" style="background:${c.hex}" data-hair-color="${c.hex}" title="${c.name}"></button>`
+  ).join('');
+
+  document.getElementById('free-claims-note').textContent =
+    state.freeClaims > 0 ? `🎁 ${state.freeClaims} free item claim${state.freeClaims > 1 ? 's' : ''} available — spend them in the Shop.` : '';
+
+  document.getElementById('equipment-slots').innerHTML = EQUIPMENT_SLOTS.map((slot) => {
+    let valueLabel = 'Empty';
+    if (slot === 'expression') {
+      const expr = EXPRESSIONS.find((e) => e.id === state.equipped.expression);
+      valueLabel = expr ? expr.name : 'Empty';
+    } else {
+      const item = equippedItem(slot);
+      valueLabel = item ? item.name : 'Empty';
+    }
+    return `<button class="equip-slot-card" data-slot="${slot}">
+      <div class="equip-slot-label">${SLOT_LABELS[slot]}</div>
+      <div class="equip-slot-value ${valueLabel === 'Empty' ? 'empty' : ''}">${valueLabel}</div>
+    </button>`;
+  }).join('');
+}
+
+function familiesForSlot(slot) {
+  return Object.keys(ITEM_SLOT_BY_FAMILY).filter((f) => ITEM_SLOT_BY_FAMILY[f] === slot);
+}
+
+function openEquipPicker(slot) {
+  pendingSlot = slot;
+  document.getElementById('picker-title').textContent = `Equip: ${SLOT_LABELS[slot]}`;
+  const rank = currentRank(state.xp);
+  let rows;
+  if (slot === 'expression') {
+    rows = EXPRESSIONS.filter((e) => rank.tier >= e.unlockTier).map((e) => ({
+      id: e.id,
+      label: e.name,
+      equipped: state.equipped.expression === e.id,
+    }));
+  } else {
+    const families = familiesForSlot(slot);
+    rows = state.inventory
+      .map((id) => ITEMS.find((i) => i.id === id))
+      .filter((it) => it && families.includes(it.family))
+      .map((it) => ({ id: it.id, label: `${it.name} (${it.rarity})`, equipped: state.equipped[slot] === it.id }));
+  }
+  const listEl = document.getElementById('picker-list');
+  const unequipRow = `<div class="picker-row-item" data-unequip="1"><span>— Unequip —</span></div>`;
+  listEl.innerHTML =
+    unequipRow +
+    rows
+      .map(
+        (r) =>
+          `<div class="picker-row-item ${r.equipped ? 'equipped' : ''}" data-equip-id="${r.id}"><span>${r.label}${
+            r.equipped ? ' ✓' : ''
+          }</span></div>`
+      )
+      .join('');
+  if (!rows.length) listEl.innerHTML += `<p style="color:var(--dim);font-size:12px;">Nothing owned for this slot yet — check the Shop.</p>`;
+  document.getElementById('picker-modal').hidden = false;
+}
+
+function closePicker() {
+  document.getElementById('picker-modal').hidden = true;
+  pendingSlot = null;
+}
+
+// ---------- shop (section 6) ----------
+
+function renderShop() {
+  document.getElementById('shop-family-tiles').innerHTML = SHOP_FAMILIES.map(
+    (f) => `<button class="family-tile ${f.family === shopActiveFamily ? 'active' : ''}" data-family="${f.family}">${f.label}</button>`
+  ).join('');
+  const rank = currentRank(state.xp);
+  const items = ITEMS.filter((it) => it.family === shopActiveFamily);
+  document.getElementById('shop-item-grid').innerHTML = items.map((it) => shopItemCardHTML(it, rank)).join('');
+}
+
+function statLabel(item) {
+  const v = item.stat.value;
+  if (item.stat.type === 'hp') return `+${v} HP`;
+  if (item.stat.type === 'shield') return `+${v} Shield`;
+  if (item.stat.type === 'damage') return `${v} Dmg`;
+  return `+${v} Assist`;
+}
+
+function shopItemCardHTML(item, rank) {
+  const owned = state.inventory.includes(item.id);
+  const unlocked = rank.tier >= item.unlockTier;
+  const villageOk = !item.village || item.village === state.world.location;
+  const canBuy = !owned && unlocked && villageOk && !item.wheelOnly && state.ryo >= (item.cost || 0);
+  const canClaim = !owned && unlocked && villageOk && !item.wheelOnly && state.freeClaims > 0;
+  let note = '';
+  if (item.wheelOnly) note = 'Wheel-exclusive — never sold in the shop.';
+  else if (!unlocked) note = `Unlocks at ${NINK_DATA.ranks[item.unlockTier].name} (Tier ${item.unlockTier}).`;
+  else if (!villageOk) note = `Only sold in ${VILLAGES.find((v) => v.id === item.village).name}.`;
+
+  return `<div class="item-card ${owned ? 'owned' : ''} ${!unlocked ? 'locked' : ''}" style="--rarity-color:${RARITY_COLORS[item.rarity]}">
+    <div class="item-card-head">
+      <div class="item-icon-wrap">${itemIconSVG(item)}</div>
+      <div>
+        <div class="item-card-name">${item.name}${owned ? ' ✓' : ''}</div>
+        <div class="item-card-rarity">${item.rarity}</div>
+      </div>
+    </div>
+    <div class="item-card-meta">
+      <span>${statLabel(item)}</span>
+      <span>${item.wheelOnly ? 'Wheel-only' : fmt(item.cost) + ' ₽'}</span>
+    </div>
+    ${note ? `<div class="item-card-note">${note}</div>` : ''}
+    ${
+      !owned && !item.wheelOnly
+        ? `<div class="item-card-actions">
+      <button class="action-btn" data-buy="${item.id}" ${canBuy ? '' : 'disabled'}>Buy</button>
+      ${state.freeClaims > 0 ? `<button class="action-btn" data-claim="${item.id}" ${canClaim ? '' : 'disabled'}>Claim Free</button>` : ''}
+    </div>`
+        : ''
+    }
+  </div>`;
+}
+
+function grantItem(itemId) {
+  if (!state.inventory.includes(itemId)) state.inventory.push(itemId);
+  const item = ITEMS.find((i) => i.id === itemId);
+  const slot = ITEM_SLOT_BY_FAMILY[item.family];
+  if (slot && !state.equipped[slot]) state.equipped[slot] = itemId;
+}
+
+function buyItem(item) {
+  const rank = currentRank(state.xp);
+  if (state.inventory.includes(item.id) || item.wheelOnly) return;
+  if (rank.tier < item.unlockTier) return;
+  if (item.village && item.village !== state.world.location) return;
+  if (state.ryo < item.cost) return;
+  state.ryo -= item.cost;
+  grantItem(item.id);
+  toast(`Bought ${item.name}!`);
+  persist();
+  renderHeader();
+  renderShop();
+  checkAchievements();
+}
+
+function claimFreeItem(item) {
+  const rank = currentRank(state.xp);
+  if (state.inventory.includes(item.id) || item.wheelOnly) return;
+  if (rank.tier < item.unlockTier) return;
+  if (item.village && item.village !== state.world.location) return;
+  if (state.freeClaims <= 0) return;
+  state.freeClaims -= 1;
+  grantItem(item.id);
+  toast(`Claimed ${item.name} free!`);
+  persist();
+  renderHeader();
+  renderShop();
+  checkAchievements();
+}
+
+// ---------- world map (section 8) ----------
+
+function formatDuration(ms) {
+  if (ms <= 0) return 'arriving...';
+  const totalMin = Math.ceil(ms / 60000);
+  const d = Math.floor(totalMin / 1440);
+  const h = Math.floor((totalMin % 1440) / 60);
+  const m = totalMin % 60;
+  const parts = [];
+  if (d) parts.push(d + 'd');
+  if (h) parts.push(h + 'h');
+  if (!d) parts.push(m + 'm');
+  return parts.join(' ');
+}
+
+function resolveTravelIfArrived() {
+  if (state.world.travelDestination && Date.now() >= state.world.travelArrivalTs) {
+    const arrivedName = VILLAGES.find((v) => v.id === state.world.travelDestination).name;
+    state.world.location = state.world.travelDestination;
+    state.world.travelDestination = null;
+    state.world.travelArrivalTs = null;
+    persist();
+    toast(`🧭 Arrived at ${arrivedName}`);
+  }
+}
+
+function renderWorldMap() {
+  resolveTravelIfArrived();
+  const loc = VILLAGES.find((v) => v.id === state.world.location);
+  document.getElementById('map-location-line').textContent = `📍 Currently in ${loc.name}`;
+  const banner = document.getElementById('travel-banner');
+  if (state.world.travelDestination) {
+    const dest = VILLAGES.find((v) => v.id === state.world.travelDestination);
+    const remainingMs = state.world.travelArrivalTs - Date.now();
+    banner.hidden = false;
+    banner.textContent = `🧭 Traveling to ${dest.name} — arrives in ${formatDuration(remainingMs)}`;
+  } else {
+    banner.hidden = true;
+  }
+  document.getElementById('village-list').innerHTML = VILLAGES.map((v) => {
+    const isCurrent = v.id === state.world.location;
+    const traveling = !!state.world.travelDestination;
+    const days = travelDaysBetween(state.world.location, v.id);
+    return `<div class="village-card ${isCurrent ? 'current' : ''}">
+      <div class="village-name">${v.name}${isCurrent ? ' (here)' : ''}</div>
+      <div class="village-meta">${v.terrain}</div>
+      ${!isCurrent ? `<div class="village-meta">${days} day${days === 1 ? '' : 's'} away</div>` : ''}
+      ${!isCurrent ? `<div class="chapter-actions"><button class="action-btn" data-travel="${v.id}" ${traveling ? 'disabled' : ''}>Travel</button></div>` : ''}
+    </div>`;
+  }).join('');
+  document.getElementById('landmark-list').innerHTML = LANDMARKS.map(
+    (l) => `<div class="landmark-card" data-lore="${l.id}"><div class="landmark-name">${l.name}</div></div>`
+  ).join('');
+}
+
+function startTravel(destId) {
+  if (state.world.travelDestination || destId === state.world.location) return;
+  const days = travelDaysBetween(state.world.location, destId);
+  state.world.travelDestination = destId;
+  state.world.travelArrivalTs = Date.now() + days * 24 * 60 * 60 * 1000;
+  persist();
+  renderWorldMap();
+  toast(`🧭 Traveling to ${VILLAGES.find((v) => v.id === destId).name} — ${days} day${days === 1 ? '' : 's'}`);
+}
+
+function openLore(landmarkId) {
+  const l = LANDMARKS.find((x) => x.id === landmarkId);
+  if (!l) return;
+  document.getElementById('lore-title').textContent = l.name;
+  document.getElementById('lore-text').textContent = l.lore;
+  document.getElementById('lore-modal').hidden = false;
+}
+
+// ---------- daily draw wheel (section 7) ----------
+
+function buildWheelSlotsForDisplay(dateStr) {
+  const rand = seededRandom(dateStr + '|wheelDisplay');
+  const combined = [
+    ...WHEEL_RYO_VALUES.map((v) => ({ type: 'ryo', amount: v })),
+    ...WHEEL_XP_VALUES.map((v) => ({ type: 'xp', amount: v })),
+  ];
+  for (let i = combined.length - 1; i > 0; i--) {
+    const j = Math.floor(rand() * (i + 1));
+    [combined[i], combined[j]] = [combined[j], combined[i]];
+  }
+  const slots = combined.slice(0, 12);
+  const now = new Date();
+  if (WHEEL_BONUS_DAYS.includes(now.getDay())) slots[Math.floor(rand() * 12)] = { type: 'bonus' };
+  if (WHEEL_MYTHIC_DAYS.includes(now.getDate())) slots[Math.floor(rand() * 12)] = { type: 'mythic' };
+  return slots;
+}
+
+function wheelSlotHTML(slot) {
+  if (slot.type === 'bonus') return `<div class="wheel-slot bonus">🎁 Item</div>`;
+  if (slot.type === 'mythic') return `<div class="wheel-slot mythic">✨ Mythic</div>`;
+  if (slot.type === 'ryo') return `<div class="wheel-slot">₽${slot.amount}</div>`;
+  return `<div class="wheel-slot">${slot.amount} XP</div>`;
+}
+
+function renderWheel() {
+  const today = todayStr();
+  document.getElementById('wheel-slots').innerHTML = buildWheelSlotsForDisplay(today).map(wheelSlotHTML).join('');
+  const spun = state.wheel.lastSpinDate === today;
+  document.getElementById('spin-btn').disabled = spun;
+  document.getElementById('wheel-status').textContent = spun
+    ? 'Already spun today — come back tomorrow.'
+    : `One spin per day · ${state.wheel.totalSpins} lifetime spins`;
+  document.getElementById('wheel-result').textContent = state.wheel.lastResult ? state.wheel.lastResult.label : '';
+}
+
+function weightedPickItemId(pool, rarityWeights, rand) {
+  const weighted = pool.map((it) => ({ it, w: rarityWeights[it.rarity] || 1 }));
+  const total = weighted.reduce((a, x) => a + x.w, 0);
+  let r = rand() * total;
+  for (const x of weighted) {
+    r -= x.w;
+    if (r <= 0) return x.it.id;
+  }
+  return weighted[weighted.length - 1].it.id;
+}
+
+function applyWheelResult(result) {
+  if (result.type === 'ryo') {
+    state.ryo += result.amount;
+    state.wheel.lastResult = { label: `🎡 +${result.amount} ₽` };
+    toast(`🎡 Wheel: +${result.amount} ₽`);
+  } else if (result.type === 'xp') {
+    gainXp(result.amount);
+    state.wheel.lastResult = { label: `🎡 +${result.amount} XP` };
+    toast(`🎡 Wheel: +${result.amount} XP`);
+  } else if (result.type === 'item') {
+    const item = ITEMS.find((i) => i.id === result.itemId);
+    grantItem(item.id);
+    state.wheel.itemsWon.push(item.id);
+    state.wheel.lastResult = { label: `🎁 Won ${item.name}!` };
+    toast(`🎡 Wheel jackpot: ${item.name}!`);
+  } else if (result.type === 'mythic') {
+    const item = ITEMS.find((i) => i.id === result.itemId);
+    grantItem(item.id);
+    state.wheel.mythicsWon.push(item.id);
+    state.wheel.lastResult = { label: `✨ Mythic: ${item.name}!` };
+    toast(`✨ MYTHIC: ${item.name}!!`);
+  }
+  renderHeader();
+  renderStats();
+}
+
+function spinWheel() {
+  const today = todayStr();
+  if (state.wheel.lastSpinDate === today) {
+    toast('Already spun today — come back tomorrow.');
+    return;
+  }
+  const rand = Math.random;
+  const now = new Date();
+  let result = null;
+
+  if (WHEEL_MYTHIC_DAYS.includes(now.getDate()) && rand() < WHEEL_MYTHIC_CHANCE) {
+    const unowned = MYTHIC_ITEM_IDS.filter((id) => !state.inventory.includes(id));
+    if (unowned.length) result = { type: 'mythic', itemId: unowned[Math.floor(rand() * unowned.length)] };
+  }
+  if (!result && WHEEL_BONUS_DAYS.includes(now.getDay()) && rand() < WHEEL_BONUS_CHANCE) {
+    const pool = ITEMS.filter((it) => !it.wheelOnly);
+    result = { type: 'item', itemId: weightedPickItemId(pool, WHEEL_BONUS_RARITY_WEIGHTS, rand) };
+  }
+  if (!result) {
+    const pickRyo = rand() < 0.5;
+    const values = pickRyo ? WHEEL_RYO_VALUES : WHEEL_XP_VALUES;
+    const idx = weightedIndex(values.length, rand);
+    result = pickRyo ? { type: 'ryo', amount: values[idx] } : { type: 'xp', amount: values[idx] };
+  }
+
+  applyWheelResult(result);
+  state.wheel.lastSpinDate = today;
+  state.wheel.totalSpins += 1;
+  persist();
+  renderWheel();
+  checkAchievements();
+}
+
+// ---------- people tab (section 11) ----------
+
+function renderPeople() {
+  document.getElementById('people-list').innerHTML = PEOPLE.map((p) => {
+    const unlocked = isChapterReached(p.unlockChapter);
+    if (!unlocked) {
+      return `<div class="person-card locked"><div class="person-name">???</div><div class="person-status">Reach Chapter ${p.unlockChapter} to meet them.</div></div>`;
+    }
+    let stageText = p.stages[0].text;
+    for (let i = p.stages.length - 1; i >= 0; i--) {
+      const st = p.stages[i];
+      if (st.after == null) {
+        stageText = st.text;
+        break;
+      }
+      if (state.story.clearedChapters.includes(st.after)) {
+        stageText = st.text;
+        break;
+      }
+    }
+    return `<div class="person-card"><div class="person-name">${p.name}</div><div class="person-status">${stageText}</div></div>`;
+  }).join('');
 }
 
 // ---------- achievements ----------
@@ -506,6 +1099,11 @@ function switchTab(tab) {
   document.querySelectorAll('.tab-panel').forEach((p) => p.classList.toggle('active', p.id === 'tab-' + tab));
   if (tab === 'quests') renderQuests();
   else if (tab === 'story') renderStory();
+  else if (tab === 'character') renderCharacter();
+  else if (tab === 'shop') renderShop();
+  else if (tab === 'map') renderWorldMap();
+  else if (tab === 'wheel') renderWheel();
+  else if (tab === 'people') renderPeople();
   else if (tab === 'achievements') renderAchievements();
 }
 
@@ -554,11 +1152,88 @@ function wireEvents() {
     }
   });
 
-  setInterval(() => {
-    if (ensureDailyReset()) {
-      const activeTab = document.querySelector('.tab-btn.active').dataset.tab;
-      if (activeTab === 'quests') renderQuests();
+  document.getElementById('tab-character').addEventListener('click', (e) => {
+    const slotBtn = e.target.closest('.equip-slot-card');
+    if (slotBtn) {
+      openEquipPicker(slotBtn.dataset.slot);
+      return;
     }
+    const styleBtn = e.target.closest('[data-hair-style]');
+    if (styleBtn) {
+      state.hair.style = styleBtn.dataset.hairStyle;
+      persist();
+      renderCharacter();
+      return;
+    }
+    const colorBtn = e.target.closest('[data-hair-color]');
+    if (colorBtn) {
+      state.hair.color = colorBtn.dataset.hairColor;
+      persist();
+      renderCharacter();
+    }
+  });
+
+  document.getElementById('picker-list').addEventListener('click', (e) => {
+    if (!pendingSlot) return;
+    const unequip = e.target.closest('[data-unequip]');
+    if (unequip) {
+      state.equipped[pendingSlot] = null;
+      persist();
+      closePicker();
+      renderCharacter();
+      return;
+    }
+    const row = e.target.closest('[data-equip-id]');
+    if (row) {
+      state.equipped[pendingSlot] = row.dataset.equipId;
+      persist();
+      closePicker();
+      renderCharacter();
+      checkAchievements();
+    }
+  });
+  document.getElementById('picker-close-btn').addEventListener('click', closePicker);
+
+  document.getElementById('tab-shop').addEventListener('click', (e) => {
+    const familyBtn = e.target.closest('[data-family]');
+    if (familyBtn) {
+      shopActiveFamily = familyBtn.dataset.family;
+      renderShop();
+      return;
+    }
+    const buyBtn = e.target.closest('[data-buy]');
+    if (buyBtn && !buyBtn.disabled) {
+      const item = ITEMS.find((i) => i.id === buyBtn.dataset.buy);
+      if (item) buyItem(item);
+      return;
+    }
+    const claimBtn = e.target.closest('[data-claim]');
+    if (claimBtn && !claimBtn.disabled) {
+      const item = ITEMS.find((i) => i.id === claimBtn.dataset.claim);
+      if (item) claimFreeItem(item);
+    }
+  });
+
+  document.getElementById('tab-map').addEventListener('click', (e) => {
+    const travelBtn = e.target.closest('[data-travel]');
+    if (travelBtn && !travelBtn.disabled) {
+      startTravel(travelBtn.dataset.travel);
+      return;
+    }
+    const landmark = e.target.closest('[data-lore]');
+    if (landmark) openLore(landmark.dataset.lore);
+  });
+  document.getElementById('lore-close-btn').addEventListener('click', () => {
+    document.getElementById('lore-modal').hidden = true;
+  });
+
+  document.getElementById('spin-btn').addEventListener('click', spinWheel);
+
+  setInterval(() => {
+    const activeTab = document.querySelector('.tab-btn.active').dataset.tab;
+    if (ensureDailyReset() && activeTab === 'quests') renderQuests();
+    if (activeTab === 'map') renderWorldMap();
+    if (activeTab === 'wheel') renderWheel();
   }, 60000);
 }
 
@@ -567,6 +1242,7 @@ function wireEvents() {
 async function init() {
   const loaded = await window.ninkSaga.loadState();
   state = normalizeState(loaded);
+  grantStarterKitIfNeeded();
   ensureDailyReset();
   renderHeader();
   renderStats();
