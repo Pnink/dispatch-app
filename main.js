@@ -1,4 +1,4 @@
-const { app, BrowserWindow, globalShortcut, Tray, Menu, ipcMain, nativeImage } = require('electron');
+const { app, BrowserWindow, globalShortcut, Tray, Menu, ipcMain, nativeImage, protocol } = require('electron');
 const path = require('path');
 const fs = require('fs/promises');
 
@@ -10,6 +10,18 @@ let tray = null;
 function statePath() {
   return path.join(app.getPath('userData'), 'nink-saga-state.json');
 }
+
+// A plain file:// load treats the renderer as an opaque/null origin, which
+// silently blocks `<script type="module">` (needed to load Three.js) under
+// Chromium's CORS rules for module scripts. Serving the app over a
+// privileged custom scheme instead makes it a normal same-origin page —
+// this must be registered before the app is ready.
+protocol.registerSchemesAsPrivileged([
+  {
+    scheme: 'app',
+    privileges: { standard: true, secure: true, supportFetchAPI: true, corsEnabled: true, stream: true },
+  },
+]);
 
 function toggleWindow() {
   if (!mainWindow) return;
@@ -40,7 +52,7 @@ function createWindow() {
     },
   });
 
-  mainWindow.loadFile(path.join(__dirname, 'renderer', 'index.html'));
+  mainWindow.loadURL('app://local/renderer/index.html');
 
   // Keep it around instead of destroying it when closed, so the hotkey
   // and tray icon can bring it back instantly.
@@ -96,7 +108,30 @@ ipcMain.handle('save-state', async (_event, state) => {
   }
 });
 
+const MIME_TYPES = {
+  '.html': 'text/html',
+  '.js': 'text/javascript',
+  '.mjs': 'text/javascript',
+  '.css': 'text/css',
+  '.json': 'application/json',
+};
+
 app.whenReady().then(() => {
+  protocol.handle('app', async (request) => {
+    const { pathname } = new URL(request.url);
+    const filePath = path.join(__dirname, decodeURIComponent(pathname));
+    // Module scripts strictly enforce Content-Type (unlike classic scripts),
+    // and net.fetch() on a file:// URL doesn't reliably set it — read the
+    // file directly and set the header ourselves.
+    try {
+      const data = await fs.readFile(filePath);
+      const contentType = MIME_TYPES[path.extname(filePath).toLowerCase()] || 'application/octet-stream';
+      return new Response(data, { headers: { 'Content-Type': contentType } });
+    } catch (err) {
+      return new Response('Not found', { status: 404 });
+    }
+  });
+
   createWindow();
   createTray();
 

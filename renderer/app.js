@@ -263,10 +263,13 @@ function renderStats() {
 
 // ---------- quests ----------
 
+const STAT_ICONS = { business: '💼', body: '💪', brand: '📣', mind: '🧠' };
+
 function questCardHTML(q, completed, extraClass = '') {
   return `
     <div class="quest-card ${extraClass} ${completed ? 'done' : ''}" data-quest-id="${q.id}">
       <div class="quest-check ${completed ? 'checked' : ''}">${completed ? '✓' : ''}</div>
+      <div class="quest-stat-icon">${STAT_ICONS[q.stat] || '⭐'}</div>
       <div class="quest-info">
         <div class="quest-title">${q.title}</div>
         <div class="quest-meta"><span class="stat-tag">${q.stat}</span></div>
@@ -368,7 +371,7 @@ function chapterCardHTML(ch, rank) {
         ready ? '' : 'disabled'
       }>Become Hokage</button></div>`;
     } else if (!cleared && allBeatsDone) {
-      actionHtml = `<div class="chapter-actions"><button class="action-btn" data-fight="${ch.num}">Fight ${ch.boss}</button></div>`;
+      actionHtml = `<div class="chapter-actions"><button class="action-btn" data-fight="${ch.num}">⚔ Fight ${ch.boss}</button></div>`;
     }
 
     bodyHtml = `
@@ -381,12 +384,12 @@ function chapterCardHTML(ch, rank) {
     const lockNote = !prevCleared
       ? `Clear Chapter ${ch.num - 1} first.`
       : `Reach ${NINK_DATA.ranks[ch.unlockTier].name} (Tier ${ch.unlockTier}) to unlock.`;
-    bodyHtml = `<p class="chapter-lock-note">${lockNote}</p>`;
+    bodyHtml = `<p class="chapter-lock-note">🔒 ${lockNote}</p>`;
   }
 
   return `<div class="chapter-card ${cleared ? 'cleared' : ''} ${!available && !cleared ? 'locked' : ''}">
     <div class="chapter-head">
-      <div class="chapter-title"><span class="chapter-num">#${ch.num}</span>${ch.title}</div>
+      <div class="chapter-title"><span class="chapter-icon">${cleared ? '📖' : ch.capstone ? '👑' : '📜'}</span><span class="chapter-num">#${ch.num}</span>${ch.title}</div>
       <div class="chapter-reward">${ch.capstone ? '' : `+${fmt(ch.xp)} XP · +${fmt(ch.ryo)} ₽`}</div>
     </div>
     ${bodyHtml}
@@ -680,8 +683,26 @@ function buildAvatarSVG() {
 
 // ---------- character tab ----------
 
-function renderCharacter() {
+function renderAvatar() {
+  if (window.THREE) {
+    initAvatar3D();
+    syncAvatar3D();
+    return;
+  }
+  // THREE hasn't finished loading yet (only possible right after launch, or
+  // on the mobile build if the CDN is slow) — show the flat fallback now
+  // and upgrade to the 3D model once it's ready.
   document.getElementById('avatar-svg-wrap').innerHTML = buildAvatarSVG();
+  setTimeout(() => {
+    if (window.THREE && document.querySelector('.tab-btn.active').dataset.tab === 'character') {
+      initAvatar3D();
+      syncAvatar3D();
+    }
+  }, 400);
+}
+
+function renderCharacter() {
+  renderAvatar();
   const stats = computeCombatStats();
   document.getElementById('combat-stats-line').innerHTML = `
     <span>❤ ${stats.maxHp} HP</span>
@@ -879,6 +900,17 @@ function resolveTravelIfArrived() {
 
 function renderWorldMap() {
   resolveTravelIfArrived();
+  if (window.THREE) {
+    initWorldMap3D();
+    syncWorldMap3D();
+  } else {
+    setTimeout(() => {
+      if (window.THREE && document.querySelector('.tab-btn.active').dataset.tab === 'map') {
+        initWorldMap3D();
+        syncWorldMap3D();
+      }
+    }, 400);
+  }
   const loc = VILLAGES.find((v) => v.id === state.world.location);
   document.getElementById('map-location-line').textContent = `📍 Currently in ${loc.name}`;
   const banner = document.getElementById('travel-banner');
@@ -895,14 +927,14 @@ function renderWorldMap() {
     const traveling = !!state.world.travelDestination;
     const days = travelDaysBetween(state.world.location, v.id);
     return `<div class="village-card ${isCurrent ? 'current' : ''}">
-      <div class="village-name">${v.name}${isCurrent ? ' (here)' : ''}</div>
+      <div class="village-name">${isCurrent ? '🏯' : '🏠'} ${v.name}${isCurrent ? ' (here)' : ''}</div>
       <div class="village-meta">${v.terrain}</div>
-      ${!isCurrent ? `<div class="village-meta">${days} day${days === 1 ? '' : 's'} away</div>` : ''}
+      ${!isCurrent ? `<div class="village-meta">🚶 ${days} day${days === 1 ? '' : 's'} away</div>` : ''}
       ${!isCurrent ? `<div class="chapter-actions"><button class="action-btn" data-travel="${v.id}" ${traveling ? 'disabled' : ''}>Travel</button></div>` : ''}
     </div>`;
   }).join('');
   document.getElementById('landmark-list').innerHTML = LANDMARKS.map(
-    (l) => `<div class="landmark-card" data-lore="${l.id}"><div class="landmark-name">${l.name}</div></div>`
+    (l) => `<div class="landmark-card" data-lore="${l.id}"><div class="landmark-name">📍 ${l.name}</div></div>`
   ).join('');
 }
 
@@ -1037,25 +1069,35 @@ function renderPeople() {
   document.getElementById('people-list').innerHTML = PEOPLE.map((p) => {
     const unlocked = isChapterReached(p.unlockChapter);
     if (!unlocked) {
-      return `<div class="person-card locked"><div class="person-name">???</div><div class="person-status">Reach Chapter ${p.unlockChapter} to meet them.</div></div>`;
+      return `<div class="person-card locked"><div class="person-name">🌑 ???</div><div class="person-status">Reach Chapter ${p.unlockChapter} to meet them.</div></div>`;
     }
     let stageText = p.stages[0].text;
+    let stageIdx = 0;
     for (let i = p.stages.length - 1; i >= 0; i--) {
       const st = p.stages[i];
-      if (st.after == null) {
+      if (st.after == null || state.story.clearedChapters.includes(st.after)) {
         stageText = st.text;
-        break;
-      }
-      if (state.story.clearedChapters.includes(st.after)) {
-        stageText = st.text;
+        stageIdx = i;
         break;
       }
     }
-    return `<div class="person-card"><div class="person-name">${p.name}</div><div class="person-status">${stageText}</div></div>`;
+    const isFinalStage = stageIdx === p.stages.length - 1;
+    const icon = isFinalStage && /died|gave (his|her) life|fell|struck down/i.test(stageText) ? '🪦' : '🥷';
+    return `<div class="person-card"><div class="person-name">${icon} ${p.name}</div><div class="person-status">${stageText}</div></div>`;
   }).join('');
 }
 
 // ---------- achievements ----------
+
+const ACHIEVEMENT_CATEGORY_ICONS = {
+  Streaks: '🔥',
+  'Quests Completed': '✅',
+  'Rank Tiers': '⭐',
+  Story: '📖',
+  'Life-Goal Arcs': '🎯',
+  Gear: '🎒',
+  'Currency & Wheel': '💰',
+};
 
 function renderAchievements() {
   const el = document.getElementById('achievement-list');
@@ -1070,7 +1112,7 @@ function renderAchievements() {
         })
         .join('');
       return `<div>
-        <div class="ach-category-title">${cat}</div>
+        <div class="ach-category-title">${ACHIEVEMENT_CATEGORY_ICONS[cat] || '🏅'} ${cat}</div>
         <div class="ach-grid">${badges}</div>
       </div>`;
     })
@@ -1235,6 +1277,10 @@ function wireEvents() {
     if (activeTab === 'map') renderWorldMap();
     if (activeTab === 'wheel') renderWheel();
   }, 60000);
+
+  // Belt-and-suspenders autosave — every state-changing action already
+  // persists immediately, this just guards against anything that doesn't.
+  setInterval(() => persist(), 30000);
 }
 
 // ---------- init ----------

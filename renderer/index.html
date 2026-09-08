@@ -61,6 +61,7 @@
         <div id="character-layout">
           <div id="avatar-panel">
             <div id="avatar-svg-wrap"></div>
+            <p class="drag-hint">🖐 Drag to spin Nink around</p>
             <div class="combat-stats-line" id="combat-stats-line"></div>
             <h3 class="subsection-title">Hair</h3>
             <div class="picker-row" id="hair-style-row"></div>
@@ -79,6 +80,8 @@
       </section>
 
       <section id="tab-map" class="tab-panel">
+        <div id="map-3d-wrap"></div>
+        <p class="drag-hint">🖐 Drag to spin the world · tap a marker to jump to it below</p>
         <p id="map-location-line"></p>
         <div id="travel-banner" hidden></div>
         <h2 class="section-title">Villages</h2>
@@ -145,10 +148,12 @@
 
     <div id="toast" hidden></div>
 
+    <script type="module" src="three-bootstrap.js"></script>
     <script src="items.js"></script>
     <script src="world.js"></script>
     <script src="people.js"></script>
     <script src="data.js"></script>
+    <script src="three-scenes.js"></script>
     <script src="app.js"></script>
   </body>
 </html>
