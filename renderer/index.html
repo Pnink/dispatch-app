@@ -8,27 +8,6 @@
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
-    <header id="app-header">
-      <div id="rank-block">
-        <div id="rank-name">Low Academy Student</div>
-        <div id="xp-bar-track">
-          <div id="xp-bar-fill"></div>
-        </div>
-        <div id="xp-label">0 / 7,000 XP</div>
-      </div>
-      <div id="currency-block">
-        <div id="ryo-display">₽ <span id="ryo-amount">0</span></div>
-        <div id="streak-display">🔥 <span id="streak-amount">0</span>-day streak</div>
-      </div>
-    </header>
-
-    <div id="stats-row">
-      <div class="stat-pill" data-stat="business"><span class="stat-label">Business</span><div class="stat-bar-track"><div class="stat-bar-fill"></div></div></div>
-      <div class="stat-pill" data-stat="body"><span class="stat-label">Body</span><div class="stat-bar-track"><div class="stat-bar-fill"></div></div></div>
-      <div class="stat-pill" data-stat="brand"><span class="stat-label">Brand</span><div class="stat-bar-track"><div class="stat-bar-fill"></div></div></div>
-      <div class="stat-pill" data-stat="mind"><span class="stat-label">Mind</span><div class="stat-bar-track"><div class="stat-bar-fill"></div></div></div>
-    </div>
-
     <nav id="tabs">
       <button class="tab-btn active" data-tab="quests">Daily Quests</button>
       <button class="tab-btn" data-tab="story">Story Mode</button>
@@ -42,6 +21,27 @@
 
     <main id="tab-content">
       <section id="tab-quests" class="tab-panel active">
+        <header id="app-header">
+          <div id="rank-block">
+            <div id="rank-name">Low Academy Student</div>
+            <div id="xp-bar-track">
+              <div id="xp-bar-fill"></div>
+            </div>
+            <div id="xp-label">0 / 7,000 XP</div>
+          </div>
+          <div id="currency-block">
+            <div id="ryo-display">₽ <span id="ryo-amount">0</span></div>
+            <div id="streak-display">🔥 <span id="streak-amount">0</span>-day streak</div>
+          </div>
+        </header>
+
+        <div id="stats-row">
+          <div class="stat-pill" data-stat="business"><span class="stat-label">Business</span><div class="stat-bar-track"><div class="stat-bar-fill"></div></div></div>
+          <div class="stat-pill" data-stat="body"><span class="stat-label">Body</span><div class="stat-bar-track"><div class="stat-bar-fill"></div></div></div>
+          <div class="stat-pill" data-stat="brand"><span class="stat-label">Brand</span><div class="stat-bar-track"><div class="stat-bar-fill"></div></div></div>
+          <div class="stat-pill" data-stat="mind"><span class="stat-label">Mind</span><div class="stat-bar-track"><div class="stat-bar-fill"></div></div></div>
+        </div>
+
         <h2 class="section-title">Core Quests</h2>
         <div id="core-quest-list" class="quest-list"></div>
         <h2 class="section-title">Today's Quests</h2>
