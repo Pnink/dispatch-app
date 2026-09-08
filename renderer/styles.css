@@ -1,52 +1,608 @@
+:root {
+  --ink-bg: #0c0f14;
+  --panel: #151a23;
+  --panel-2: #1b2129;
+  --hairline: #2a3140;
+  --parchment: #ece6d6;
+  --dim: #a7a294;
+  --gold: #dba64c;
+  --gold-dim: #8a6f3a;
+  --chakra-blue: #4f8fd1;
+  --jade: #5fb88a;
+  --ember: #c0563f;
+}
+
 * {
   box-sizing: border-box;
 }
 
 body {
   margin: 0;
-  padding: 12px;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  background: #1e1e1e;
-  color: #eee;
+  padding: 16px 20px 20px;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  background: var(--ink-bg);
+  color: var(--parchment);
   height: 100vh;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
 }
 
-#chat-form {
+h1, h2, .display-font {
+  font-family: 'Yuji Syuku', serif;
+  font-weight: 400;
+}
+
+/* Header */
+#app-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 20px;
+  flex-shrink: 0;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--hairline);
+}
+
+#rank-block {
+  flex: 1;
+  min-width: 0;
+}
+
+#rank-name {
+  font-family: 'Yuji Syuku', serif;
+  font-size: 22px;
+  color: var(--gold);
+  margin-bottom: 6px;
+}
+
+#xp-bar-track {
+  width: 100%;
+  height: 10px;
+  background: var(--panel-2);
+  border: 1px solid var(--hairline);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+#xp-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--gold-dim), var(--gold));
+  width: 0%;
+  transition: width 0.4s ease;
+}
+
+#xp-label {
+  margin-top: 4px;
+  font-size: 12px;
+  color: var(--dim);
+}
+
+#currency-block {
+  text-align: right;
   flex-shrink: 0;
 }
 
-#message-input {
-  width: 100%;
-  padding: 10px 12px;
-  font-size: 14px;
+#ryo-display {
+  font-size: 16px;
+  color: var(--gold);
+  font-weight: 600;
+}
+
+#streak-display {
+  margin-top: 4px;
+  font-size: 12px;
+  color: var(--dim);
+}
+
+/* Stats row */
+#stats-row {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+  padding: 12px 0;
+  flex-shrink: 0;
+}
+
+.stat-pill {
+  background: var(--panel);
+  border: 1px solid var(--hairline);
   border-radius: 8px;
-  border: 1px solid #444;
-  background: #2a2a2a;
-  color: #eee;
-  outline: none;
+  padding: 8px 10px;
 }
 
-#message-input:focus {
-  border-color: #7c7cf0;
+.stat-label {
+  font-size: 11px;
+  color: var(--dim);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
 }
 
-#response {
-  margin-top: 12px;
+.stat-bar-track {
+  margin-top: 6px;
+  height: 6px;
+  background: var(--panel-2);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.stat-bar-fill {
+  height: 100%;
+  width: 0%;
+  background: var(--jade);
+  transition: width 0.4s ease;
+}
+
+/* Tabs */
+#tabs {
+  display: flex;
+  gap: 4px;
+  flex-shrink: 0;
+  border-bottom: 1px solid var(--hairline);
+}
+
+.tab-btn {
+  background: none;
+  border: none;
+  color: var(--dim);
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 10px 16px;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+}
+
+.tab-btn:hover {
+  color: var(--parchment);
+}
+
+.tab-btn.active {
+  color: var(--gold);
+  border-bottom-color: var(--gold);
+}
+
+#tab-content {
   flex: 1;
   overflow-y: auto;
-  white-space: pre-wrap;
+  padding-top: 12px;
+}
+
+.tab-panel {
+  display: none;
+}
+
+.tab-panel.active {
+  display: block;
+}
+
+.section-title {
+  font-size: 15px;
+  color: var(--gold);
+  margin: 16px 0 8px;
+}
+
+.section-title.hard {
+  color: var(--ember);
+}
+
+.section-title:first-child {
+  margin-top: 0;
+}
+
+/* Quest list */
+.quest-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.quest-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: var(--panel);
+  border: 1px solid var(--hairline);
+  border-radius: 8px;
+  padding: 10px 14px;
+}
+
+.quest-card.hard {
+  border-color: var(--ember);
+  background: linear-gradient(180deg, rgba(192, 86, 63, 0.12), var(--panel));
+}
+
+.quest-card.done {
+  opacity: 0.55;
+}
+
+.quest-check {
+  width: 20px;
+  height: 20px;
+  border-radius: 5px;
+  border: 2px solid var(--hairline);
+  background: var(--panel-2);
+  cursor: pointer;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--ink-bg);
   font-size: 13px;
-  line-height: 1.5;
-  color: #ddd;
+  font-weight: 700;
 }
 
-#response.error {
-  color: #f28b82;
+.quest-check.checked {
+  background: var(--jade);
+  border-color: var(--jade);
 }
 
-#response.loading {
-  color: #999;
-  font-style: italic;
+.quest-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.quest-title {
+  font-size: 13px;
+}
+
+.quest-card.done .quest-title {
+  text-decoration: line-through;
+}
+
+.quest-meta {
+  margin-top: 3px;
+  font-size: 11px;
+  color: var(--dim);
+}
+
+.quest-meta .stat-tag {
+  text-transform: capitalize;
+  color: var(--chakra-blue);
+}
+
+.quest-reward {
+  flex-shrink: 0;
+  font-size: 12px;
+  color: var(--gold);
+  text-align: right;
+  white-space: nowrap;
+}
+
+/* Story mode */
+#story-marker-line {
+  font-size: 12px;
+  color: var(--dim);
+  margin: 0 0 12px;
+}
+
+#story-marker-line .marker {
+  color: var(--gold);
+}
+
+.chapter-card {
+  background: var(--panel);
+  border: 1px solid var(--hairline);
+  border-radius: 10px;
+  padding: 14px 16px;
+  margin-bottom: 10px;
+}
+
+.chapter-card.locked {
+  opacity: 0.45;
+}
+
+.chapter-card.cleared {
+  border-color: var(--jade);
+}
+
+.chapter-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 10px;
+}
+
+.chapter-title {
+  font-family: 'Yuji Syuku', serif;
+  font-size: 16px;
+  color: var(--parchment);
+}
+
+.chapter-card.cleared .chapter-title::after {
+  content: ' ✓';
+  color: var(--jade);
+}
+
+.chapter-num {
+  color: var(--gold-dim);
+  font-weight: 700;
+  margin-right: 6px;
+}
+
+.chapter-reward {
+  font-size: 11px;
+  color: var(--gold);
+  white-space: nowrap;
+}
+
+.chapter-blurb {
+  font-size: 12px;
+  color: var(--dim);
+  margin: 6px 0 0;
+}
+
+.chapter-lock-note {
+  font-size: 12px;
+  color: var(--dim);
+  margin-top: 8px;
+}
+
+.gear-tip {
+  margin-top: 8px;
+  font-size: 11px;
+  color: var(--gold);
+  background: rgba(219, 166, 76, 0.1);
+  border: 1px solid var(--gold-dim);
+  border-radius: 6px;
+  padding: 6px 10px;
+}
+
+.beat-list {
+  margin-top: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.beat-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 12px;
+}
+
+.beat-row.cleared {
+  color: var(--dim);
+  text-decoration: line-through;
+}
+
+.beat-btn {
+  background: var(--panel-2);
+  border: 1px solid var(--hairline);
+  color: var(--parchment);
+  border-radius: 6px;
+  padding: 4px 10px;
+  font-size: 11px;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.beat-btn:hover {
+  border-color: var(--gold);
+}
+
+.beat-btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.chapter-actions {
+  margin-top: 12px;
+}
+
+.action-btn {
+  background: var(--gold-dim);
+  color: var(--ink-bg);
+  border: none;
+  border-radius: 6px;
+  padding: 8px 16px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.action-btn:hover {
+  background: var(--gold);
+}
+
+.action-btn:disabled {
+  background: var(--panel-2);
+  color: var(--dim);
+  cursor: default;
+}
+
+/* Achievements */
+#achievement-list {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.ach-category-title {
+  font-size: 13px;
+  color: var(--gold);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 8px;
+}
+
+.ach-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 8px;
+}
+
+.ach-badge {
+  background: var(--panel);
+  border: 1px solid var(--hairline);
+  border-radius: 8px;
+  padding: 10px 12px;
+  font-size: 12px;
+  color: var(--dim);
+}
+
+.ach-badge.unlocked {
+  border-color: var(--gold);
+  color: var(--parchment);
+}
+
+.ach-badge.unlocked::before {
+  content: '★ ';
+  color: var(--gold);
+}
+
+/* Battle modal */
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+}
+
+.modal {
+  background: var(--panel);
+  border: 1px solid var(--gold-dim);
+  border-radius: 12px;
+  padding: 20px;
+  width: 420px;
+  max-width: 90vw;
+}
+
+.modal h2 {
+  margin: 0 0 14px;
+  color: var(--gold);
+  font-size: 18px;
+  text-align: center;
+}
+
+.hp-row {
+  display: flex;
+  gap: 14px;
+}
+
+.hp-block {
+  flex: 1;
+}
+
+.hp-label {
+  font-size: 12px;
+  color: var(--dim);
+  margin-bottom: 4px;
+}
+
+.hp-bar-track {
+  height: 12px;
+  background: var(--panel-2);
+  border: 1px solid var(--hairline);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.hp-bar-fill {
+  height: 100%;
+  width: 100%;
+  transition: width 0.3s ease;
+}
+
+.hp-bar-fill.player {
+  background: var(--jade);
+}
+
+.hp-bar-fill.boss {
+  background: var(--ember);
+}
+
+.hp-text {
+  margin-top: 3px;
+  font-size: 11px;
+  color: var(--dim);
+}
+
+#battle-log {
+  margin-top: 14px;
+  height: 100px;
+  overflow-y: auto;
+  font-size: 12px;
+  color: var(--dim);
+  background: var(--panel-2);
+  border-radius: 6px;
+  padding: 8px 10px;
+  display: flex;
+  flex-direction: column-reverse;
+}
+
+#battle-actions {
+  margin-top: 14px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.battle-btn {
+  border: none;
+  border-radius: 6px;
+  padding: 10px 16px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.battle-btn.primary {
+  background: var(--gold);
+  color: var(--ink-bg);
+  flex: 1;
+}
+
+.battle-btn.secondary {
+  background: var(--panel-2);
+  color: var(--parchment);
+  border: 1px solid var(--hairline);
+  width: 100%;
+  margin-top: 10px;
+}
+
+.skill-btn {
+  background: var(--chakra-blue);
+  color: var(--ink-bg);
+  border: none;
+  border-radius: 6px;
+  padding: 10px 12px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.skill-btn:disabled {
+  background: var(--panel-2);
+  color: var(--dim);
+  cursor: default;
+}
+
+/* Toast */
+#toast {
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--panel);
+  border: 1px solid var(--gold);
+  color: var(--parchment);
+  padding: 10px 18px;
+  border-radius: 8px;
+  font-size: 13px;
+  z-index: 20;
+}
+
+/* Scrollbars */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--hairline);
+  border-radius: 4px;
 }

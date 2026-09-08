@@ -2,15 +2,88 @@
 <html>
   <head>
     <meta charset="utf-8" />
-    <title>Dispatch</title>
+    <title>The Nink Saga</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link href="https://fonts.googleapis.com/css2?family=Yuji+Syuku&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
-    <form id="chat-form">
-      <input id="message-input" type="text" placeholder="Ask Claude..." autofocus />
-    </form>
-    <div id="response"></div>
+    <header id="app-header">
+      <div id="rank-block">
+        <div id="rank-name">Low Academy Student</div>
+        <div id="xp-bar-track">
+          <div id="xp-bar-fill"></div>
+        </div>
+        <div id="xp-label">0 / 7,000 XP</div>
+      </div>
+      <div id="currency-block">
+        <div id="ryo-display">₽ <span id="ryo-amount">0</span></div>
+        <div id="streak-display">🔥 <span id="streak-amount">0</span>-day streak</div>
+      </div>
+    </header>
 
-    <script src="renderer.js"></script>
+    <div id="stats-row">
+      <div class="stat-pill" data-stat="business"><span class="stat-label">Business</span><div class="stat-bar-track"><div class="stat-bar-fill"></div></div></div>
+      <div class="stat-pill" data-stat="body"><span class="stat-label">Body</span><div class="stat-bar-track"><div class="stat-bar-fill"></div></div></div>
+      <div class="stat-pill" data-stat="brand"><span class="stat-label">Brand</span><div class="stat-bar-track"><div class="stat-bar-fill"></div></div></div>
+      <div class="stat-pill" data-stat="mind"><span class="stat-label">Mind</span><div class="stat-bar-track"><div class="stat-bar-fill"></div></div></div>
+    </div>
+
+    <nav id="tabs">
+      <button class="tab-btn active" data-tab="quests">Daily Quests</button>
+      <button class="tab-btn" data-tab="story">Story Mode</button>
+      <button class="tab-btn" data-tab="achievements">Achievements</button>
+    </nav>
+
+    <main id="tab-content">
+      <section id="tab-quests" class="tab-panel active">
+        <h2 class="section-title">Core Quests</h2>
+        <div id="core-quest-list" class="quest-list"></div>
+        <h2 class="section-title">Today's Quests</h2>
+        <div id="simple-quest-list" class="quest-list"></div>
+        <div id="hard-quest-section" hidden>
+          <h2 class="section-title hard">🔥 Hard Challenge</h2>
+          <div id="hard-quest-list" class="quest-list"></div>
+        </div>
+      </section>
+
+      <section id="tab-story" class="tab-panel">
+        <p id="story-marker-line"></p>
+        <div id="chapter-list"></div>
+      </section>
+
+      <section id="tab-achievements" class="tab-panel">
+        <div id="achievement-list"></div>
+      </section>
+    </main>
+
+    <div id="battle-modal" class="modal-backdrop" hidden>
+      <div class="modal">
+        <h2 id="battle-boss-name"></h2>
+        <div class="hp-row">
+          <div class="hp-block">
+            <div class="hp-label">Nink</div>
+            <div class="hp-bar-track"><div id="player-hp-fill" class="hp-bar-fill player"></div></div>
+            <div id="player-hp-text" class="hp-text"></div>
+          </div>
+          <div class="hp-block">
+            <div class="hp-label" id="battle-boss-label"></div>
+            <div class="hp-bar-track"><div id="boss-hp-fill" class="hp-bar-fill boss"></div></div>
+            <div id="boss-hp-text" class="hp-text"></div>
+          </div>
+        </div>
+        <div id="battle-log"></div>
+        <div id="battle-actions">
+          <button id="attack-btn" class="battle-btn primary">Attack</button>
+          <div id="skill-buttons"></div>
+        </div>
+        <button id="battle-close-btn" class="battle-btn secondary" hidden>Close</button>
+      </div>
+    </div>
+
+    <div id="toast" hidden></div>
+
+    <script src="data.js"></script>
+    <script src="app.js"></script>
   </body>
 </html>
