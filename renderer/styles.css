@@ -942,30 +942,33 @@ h1, h2, .display-font {
 }
 
 /* Daily Draw */
-#wheel-slots {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(70px, 1fr));
-  gap: 6px;
-  margin-bottom: 14px;
+#wheel-arena {
+  position: relative;
+  width: 260px;
+  max-width: 100%;
+  margin: 0 auto 16px;
+  display: flex;
+  justify-content: center;
 }
 
-.wheel-slot {
-  background: var(--panel);
-  border: 1px solid var(--hairline);
-  border-radius: 8px;
-  padding: 10px 4px;
-  text-align: center;
-  font-size: 11px;
+#wheel-svg {
+  width: 100%;
+  height: auto;
+  display: block;
+  filter: drop-shadow(0 6px 14px rgba(0, 0, 0, 0.4));
 }
 
-.wheel-slot.bonus {
-  border-color: var(--gold);
-  color: var(--gold);
-}
-
-.wheel-slot.mythic {
-  border-color: var(--chakra-blue);
-  color: var(--chakra-blue);
+#wheel-pointer {
+  position: absolute;
+  top: -4px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 0;
+  height: 0;
+  border-left: 10px solid transparent;
+  border-right: 10px solid transparent;
+  border-top: 16px solid var(--gold);
+  z-index: 2;
 }
 
 .wheel-spin-btn {

@@ -29,7 +29,9 @@ const NINK_DATA = {
     { id: 'core-4', title: 'Learn one new business, investing, or crypto term and use it in a sentence', stat: 'mind', xp: 300, ryo: 8 },
   ],
 
-  // Rotating pool of 16 — 3 shown per day, seeded by date, no Ryō.
+  // Rotating pool — 6 shown per day, seeded by date, no Ryō. Heavily
+  // expanded on player request for more day-to-day variety, especially
+  // health/physical options.
   simpleQuests: [
     { id: 'simple-1', title: 'No mindless phone scrolling today — catch yourself and put it down', stat: 'mind', xp: 60 },
     { id: 'simple-2', title: 'Stay productive through the whole day, no dead stretches', stat: 'business', xp: 60 },
@@ -47,6 +49,52 @@ const NINK_DATA = {
     { id: 'simple-14', title: 'Do a longer session today — go past your normal stopping point', stat: 'body', xp: 110 },
     { id: 'simple-15', title: 'Spend 30 extra minutes learning something useful, beyond the basics', stat: 'mind', xp: 90 },
     { id: 'simple-16', title: 'Reach out to one potential customer or contact today', stat: 'business', xp: 100 },
+    // Body / health / physical
+    { id: 'simple-17', title: 'Take a cold shower — even 30 seconds counts', stat: 'body', xp: 60 },
+    { id: 'simple-18', title: 'Hit 10,000 steps today', stat: 'body', xp: 90 },
+    { id: 'simple-19', title: 'Do 50 push-ups today, spread out however you like', stat: 'body', xp: 90 },
+    { id: 'simple-20', title: 'Do 20 minutes of cardio', stat: 'body', xp: 100 },
+    { id: 'simple-21', title: 'Take the stairs instead of the elevator all day', stat: 'body', xp: 40 },
+    { id: 'simple-22', title: 'Get 15 minutes of sunlight outside', stat: 'body', xp: 50 },
+    { id: 'simple-23', title: 'Do a posture check every hour today', stat: 'body', xp: 40 },
+    { id: 'simple-24', title: 'Foam roll or stretch out a tight muscle', stat: 'body', xp: 50 },
+    { id: 'simple-25', title: 'Eat a vegetable with every meal today', stat: 'body', xp: 60 },
+    { id: 'simple-26', title: 'Skip the soda or energy drinks today', stat: 'body', xp: 50 },
+    { id: 'simple-27', title: 'Do a 10-minute mobility or yoga flow', stat: 'body', xp: 60 },
+    { id: 'simple-28', title: 'Meal-prep something healthy for tomorrow', stat: 'body', xp: 80 },
+    { id: 'simple-29', title: 'Get to bed 30 minutes earlier tonight', stat: 'body', xp: 60 },
+    { id: 'simple-30', title: "Do a core workout — planks, crunches, whatever you've got", stat: 'body', xp: 80 },
+    { id: 'simple-31', title: 'Take a walk after a meal today', stat: 'body', xp: 50 },
+    { id: 'simple-32', title: 'Do a full stretch routine, head to toe', stat: 'body', xp: 70 },
+    { id: 'simple-33', title: 'No fast food today', stat: 'body', xp: 60 },
+    { id: 'simple-34', title: 'Do 3 sets of squats or lunges', stat: 'body', xp: 80 },
+    { id: 'simple-35', title: 'Practice deep breathing for 5 minutes', stat: 'body', xp: 40 },
+    { id: 'simple-36', title: 'Get protein in at breakfast', stat: 'body', xp: 50 },
+    // Mind
+    { id: 'simple-37', title: 'Journal for 5 minutes about your day', stat: 'mind', xp: 50 },
+    { id: 'simple-38', title: 'Meditate for 10 minutes', stat: 'mind', xp: 60 },
+    { id: 'simple-39', title: 'Learn a new word and use it today', stat: 'mind', xp: 40 },
+    { id: 'simple-40', title: 'Listen to a podcast or audiobook chapter on something useful', stat: 'mind', xp: 60 },
+    { id: 'simple-41', title: 'Do a crossword, sudoku, or brain puzzle', stat: 'mind', xp: 40 },
+    { id: 'simple-42', title: 'Plan out tomorrow before bed tonight', stat: 'mind', xp: 50 },
+    { id: 'simple-43', title: 'Spend 10 minutes reviewing what you learned this week', stat: 'mind', xp: 60 },
+    { id: 'simple-44', title: 'Take a 20-minute break from all screens', stat: 'mind', xp: 50 },
+    // Business
+    { id: 'simple-45', title: 'Review your budget or spending for 10 minutes', stat: 'business', xp: 60 },
+    { id: 'simple-46', title: "Send one follow-up message you've been putting off", stat: 'business', xp: 60 },
+    { id: 'simple-47', title: 'Organize your workspace or files for 10 minutes', stat: 'business', xp: 50 },
+    { id: 'simple-48', title: 'Write down one new business idea, good or bad', stat: 'business', xp: 40 },
+    { id: 'simple-49', title: 'Watch or read one piece of content about your industry', stat: 'business', xp: 50 },
+    { id: 'simple-50', title: "Set tomorrow's #1 priority before you stop working today", stat: 'business', xp: 40 },
+    { id: 'simple-51', title: 'Track today\'s time — where did the hours actually go', stat: 'business', xp: 50 },
+    // Brand
+    { id: 'simple-52', title: 'Comment or engage with 3 posts in your niche today', stat: 'brand', xp: 40 },
+    { id: 'simple-53', title: 'Reply to every comment on your last post', stat: 'brand', xp: 40 },
+    { id: 'simple-54', title: 'Take a behind-the-scenes photo or clip for later', stat: 'brand', xp: 40 },
+    { id: 'simple-55', title: 'Study one creator you admire for 10 minutes — what are they doing well', stat: 'brand', xp: 50 },
+    { id: 'simple-56', title: 'Batch-write 3 content ideas for the week', stat: 'brand', xp: 60 },
+    { id: 'simple-57', title: 'Update your bio or profile — make it sharper', stat: 'brand', xp: 40 },
+    { id: 'simple-58', title: 'Repost or share something today, even a small one', stat: 'brand', xp: 30 },
   ],
 
   // Rare pool of 8 — ~1 in 5 days, seeded, shown 5th with fire styling.

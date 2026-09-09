@@ -100,73 +100,130 @@ function initAvatar3D() {
   const group = new THREE.Group();
   scene.add(group);
 
-  const box = (w, h, d, color) =>
-    new THREE.Mesh(new THREE.BoxGeometry(w, h, d), new THREE.MeshStandardMaterial({ color, roughness: 0.7, metalness: 0.05 }));
-  const sphere = (r, color) => new THREE.Mesh(new THREE.SphereGeometry(r, 16, 16), new THREE.MeshStandardMaterial({ color, roughness: 0.7 }));
+  const box = (w, h, d, color, opts = {}) =>
+    new THREE.Mesh(
+      new THREE.BoxGeometry(w, h, d),
+      new THREE.MeshStandardMaterial({ color, roughness: opts.roughness ?? 0.75, metalness: opts.metalness ?? 0.05 })
+    );
+  const sphere = (r, color, opts = {}) =>
+    new THREE.Mesh(
+      new THREE.SphereGeometry(r, 16, 16),
+      new THREE.MeshStandardMaterial({ color, roughness: opts.roughness ?? 0.7, metalness: opts.metalness ?? 0.05 })
+    );
 
   const skin = '#e0b28c';
+  const cloth = '#1c2128';
   const parts = {};
 
-  parts.head = sphere(0.42, skin);
-  parts.head.position.set(0, 1.85, 0);
+  // A tapered torso — wider chest, narrower waist — reads far less like a
+  // plain block than a single uniform box, while staying in the game's
+  // existing primitive-built style.
+  parts.head = sphere(0.4, skin);
+  parts.head.position.set(0, 1.82, 0);
   group.add(parts.head);
 
-  parts.torso = box(0.78, 1.0, 0.42, '#3a3f4a');
-  parts.torso.position.set(0, 1.15, 0);
-  group.add(parts.torso);
+  parts.collar = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.27, 0.31, 0.15, 14),
+    new THREE.MeshStandardMaterial({ color: cloth, roughness: 0.85 })
+  );
+  parts.collar.position.set(0, 1.56, 0);
+  group.add(parts.collar);
 
-  parts.armL = box(0.24, 0.85, 0.24, '#3a3f4a');
-  parts.armL.position.set(-0.55, 1.15, 0);
+  parts.chest = box(0.72, 0.55, 0.4, '#3a3f4a');
+  parts.chest.position.set(0, 1.33, 0);
+  group.add(parts.chest);
+
+  parts.waist = box(0.56, 0.4, 0.36, '#3a3f4a');
+  parts.waist.position.set(0, 0.9, 0);
+  group.add(parts.waist);
+
+  parts.sash = box(0.62, 0.12, 0.44, '#6b2f2f', { roughness: 0.85 });
+  parts.sash.position.set(0, 1.08, 0);
+  group.add(parts.sash);
+
+  parts.armL = box(0.22, 0.8, 0.22, '#3a3f4a');
+  parts.armL.position.set(-0.53, 1.3, 0);
   group.add(parts.armL);
-  parts.armR = box(0.24, 0.85, 0.24, '#3a3f4a');
-  parts.armR.position.set(0.55, 1.15, 0);
+  parts.armR = box(0.22, 0.8, 0.22, '#3a3f4a');
+  parts.armR.position.set(0.53, 1.3, 0);
   group.add(parts.armR);
 
-  parts.handL = sphere(0.15, skin);
-  parts.handL.position.set(-0.55, 0.62, 0);
+  parts.handL = sphere(0.14, skin);
+  parts.handL.position.set(-0.53, 0.8, 0);
   group.add(parts.handL);
-  parts.handR = sphere(0.15, skin);
-  parts.handR.position.set(0.55, 0.62, 0);
+  parts.handR = sphere(0.14, skin);
+  parts.handR.position.set(0.53, 0.8, 0);
   group.add(parts.handR);
 
-  parts.legL = box(0.26, 0.95, 0.28, '#2a2f3a');
-  parts.legL.position.set(-0.22, 0.15, 0);
+  parts.legL = box(0.24, 0.85, 0.26, '#2a2f3a');
+  parts.legL.position.set(-0.2, 0.27, 0);
   group.add(parts.legL);
-  parts.legR = box(0.26, 0.95, 0.28, '#2a2f3a');
-  parts.legR.position.set(0.22, 0.15, 0);
+  parts.legR = box(0.24, 0.85, 0.26, '#2a2f3a');
+  parts.legR.position.set(0.2, 0.27, 0);
   group.add(parts.legR);
 
-  parts.footL = box(0.3, 0.16, 0.5, '#3a2f28');
-  parts.footL.position.set(-0.22, -0.36, 0.08);
+  // A kunai holster pouch strapped to the thigh — a small, static, classic
+  // ninja detail independent of equipped gear.
+  parts.holster = box(0.16, 0.22, 0.1, '#2a2118', { roughness: 0.85 });
+  parts.holster.position.set(0.24, 0.42, 0.16);
+  parts.holster.rotation.z = -0.15;
+  group.add(parts.holster);
+
+  parts.footL = box(0.28, 0.16, 0.5, '#3a2f28');
+  parts.footL.position.set(-0.2, -0.24, 0.08);
   group.add(parts.footL);
-  parts.footR = box(0.3, 0.16, 0.5, '#3a2f28');
-  parts.footR.position.set(0.22, -0.36, 0.08);
+  parts.footR = box(0.28, 0.16, 0.5, '#3a2f28');
+  parts.footR.position.set(0.2, -0.24, 0.08);
   group.add(parts.footR);
 
-  parts.headband = box(0.86, 0.14, 0.46, '#2f5fa8');
-  parts.headband.position.set(0, 1.92, 0);
+  parts.headband = box(0.82, 0.14, 0.44, '#2f5fa8');
+  parts.headband.position.set(0, 1.89, 0);
   group.add(parts.headband);
 
-  parts.hat = new THREE.Mesh(new THREE.ConeGeometry(0.5, 0.5, 16), new THREE.MeshStandardMaterial({ color: '#c9a24b', roughness: 0.7 }));
-  parts.hat.position.set(0, 2.45, 0);
+  parts.headbandPlate = box(0.22, 0.16, 0.05, '#c7ccd1', { roughness: 0.3, metalness: 0.6 });
+  parts.headbandPlate.position.set(0, 1.89, 0.22);
+  group.add(parts.headbandPlate);
+
+  // Trailing headband tails down the back of the neck.
+  parts.headbandTailL = box(0.1, 0.4, 0.03, '#2f5fa8');
+  parts.headbandTailL.position.set(-0.12, 1.6, -0.24);
+  parts.headbandTailL.rotation.x = 0.15;
+  group.add(parts.headbandTailL);
+  parts.headbandTailR = box(0.1, 0.45, 0.03, '#2f5fa8');
+  parts.headbandTailR.position.set(0.1, 1.57, -0.25);
+  parts.headbandTailR.rotation.x = 0.2;
+  group.add(parts.headbandTailR);
+
+  parts.hat = new THREE.Mesh(new THREE.ConeGeometry(0.48, 0.48, 16), new THREE.MeshStandardMaterial({ color: '#c9a24b', roughness: 0.7 }));
+  parts.hat.position.set(0, 2.4, 0);
   group.add(parts.hat);
 
-  parts.weapon = box(0.08, 0.7, 0.08, '#9aa0a8');
-  parts.weapon.position.set(0.62, 0.75, 0.15);
+  parts.weapon = box(0.07, 0.68, 0.07, '#9aa0a8', { roughness: 0.25, metalness: 0.65 });
+  parts.weapon.position.set(0.6, 0.9, 0.15);
   parts.weapon.rotation.z = 0.4;
   group.add(parts.weapon);
 
   parts.accessory = sphere(0.14, '#4f8fd1');
-  parts.accessory.position.set(0.5, 0.65, 0.15);
+  parts.accessory.position.set(0.48, 0.82, 0.15);
   group.add(parts.accessory);
 
   parts.summon = sphere(0.18, '#5fb85f');
-  parts.summon.position.set(0.68, 1.55, -0.1);
+  parts.summon.position.set(0.66, 1.7, -0.1);
   group.add(parts.summon);
 
-  parts.hair = box(0.5, 0.22, 0.5, '#1c1410');
-  parts.hair.position.set(0, 2.12, -0.05);
+  parts.hair = box(0.48, 0.2, 0.48, '#1c1410');
+  parts.hair.position.set(0, 2.08, -0.05);
   group.add(parts.hair);
+
+  // A soft ground shadow for visual weight — fixed under the character
+  // rather than spinning with it.
+  const shadow = new THREE.Mesh(
+    new THREE.CircleGeometry(0.55, 24),
+    new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.32 })
+  );
+  shadow.rotation.x = -Math.PI / 2;
+  shadow.position.set(0, -0.32, 0);
+  scene.add(shadow);
 
   const drag = makeDragRotate(renderer.domElement, group, { idleSpin: true });
 
@@ -196,7 +253,8 @@ function syncAvatar3D() {
 
   const setColor = (mesh, hex) => mesh.material.color.set(hex);
 
-  setColor(p.torso, topItem ? topItem.color : '#3a3f4a');
+  setColor(p.chest, topItem ? topItem.color : '#3a3f4a');
+  setColor(p.waist, topItem ? topItem.color : '#3a3f4a');
   setColor(p.armL, topItem ? topItem.color : '#3a3f4a');
   setColor(p.armR, topItem ? topItem.color : '#3a3f4a');
   setColor(p.legL, bottomItem ? bottomItem.color : '#2a2f3a');
@@ -208,7 +266,14 @@ function syncAvatar3D() {
   setColor(p.hair, state.hair.color);
 
   p.headband.visible = !!headbandItem;
-  if (headbandItem) setColor(p.headband, headbandItem.color);
+  p.headbandPlate.visible = !!headbandItem;
+  p.headbandTailL.visible = !!headbandItem;
+  p.headbandTailR.visible = !!headbandItem;
+  if (headbandItem) {
+    setColor(p.headband, headbandItem.color);
+    setColor(p.headbandTailL, headbandItem.color);
+    setColor(p.headbandTailR, headbandItem.color);
+  }
 
   p.hat.visible = !!hatItem;
   if (hatItem) setColor(p.hat, hatItem.color);

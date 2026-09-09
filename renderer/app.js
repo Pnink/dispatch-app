@@ -53,16 +53,7 @@ function seededRandom(seedStr) {
   return mulberry32(seed);
 }
 
-function weightedIndex(n, rand, decay = 0.75) {
-  const weights = Array.from({ length: n }, (_, i) => Math.pow(decay, i));
-  const total = weights.reduce((a, b) => a + b, 0);
-  let r = rand() * total;
-  for (let i = 0; i < n; i++) {
-    r -= weights[i];
-    if (r <= 0) return i;
-  }
-  return n - 1;
-}
+const DAILY_SIMPLE_QUEST_COUNT = 6;
 
 function getDailySimpleQuests(dateStr) {
   const rand = seededRandom(dateStr + '|simple');
@@ -71,7 +62,7 @@ function getDailySimpleQuests(dateStr) {
     const j = Math.floor(rand() * (i + 1));
     [pool[i], pool[j]] = [pool[j], pool[i]];
   }
-  return pool.slice(0, 3);
+  return pool.slice(0, DAILY_SIMPLE_QUEST_COUNT);
 }
 
 function getDailyHardQuest(dateStr) {
@@ -683,22 +674,34 @@ function buildAvatarSVG() {
 
 // ---------- character tab ----------
 
+// Three.js loads asynchronously (a module import on desktop, a CDN fetch
+// on the mobile build) — poll for it rather than giving up after one
+// check, since a slow mobile connection can take several seconds to pull
+// down the ~2MB library.
+function whenThreeReady(callback, attemptsLeft = 20, delayMs = 400) {
+  if (window.THREE) {
+    callback();
+    return;
+  }
+  if (attemptsLeft <= 0) return;
+  setTimeout(() => whenThreeReady(callback, attemptsLeft - 1, delayMs), delayMs);
+}
+
 function renderAvatar() {
   if (window.THREE) {
     initAvatar3D();
     syncAvatar3D();
     return;
   }
-  // THREE hasn't finished loading yet (only possible right after launch, or
-  // on the mobile build if the CDN is slow) — show the flat fallback now
-  // and upgrade to the 3D model once it's ready.
+  // Show the flat fallback right away, then upgrade to the 3D model once
+  // THREE finishes loading.
   document.getElementById('avatar-svg-wrap').innerHTML = buildAvatarSVG();
-  setTimeout(() => {
-    if (window.THREE && document.querySelector('.tab-btn.active').dataset.tab === 'character') {
+  whenThreeReady(() => {
+    if (document.querySelector('.tab-btn.active').dataset.tab === 'character') {
       initAvatar3D();
       syncAvatar3D();
     }
-  }, 400);
+  });
 }
 
 function renderCharacter() {
@@ -904,12 +907,12 @@ function renderWorldMap() {
     initWorldMap3D();
     syncWorldMap3D();
   } else {
-    setTimeout(() => {
-      if (window.THREE && document.querySelector('.tab-btn.active').dataset.tab === 'map') {
+    whenThreeReady(() => {
+      if (document.querySelector('.tab-btn.active').dataset.tab === 'map') {
         initWorldMap3D();
         syncWorldMap3D();
       }
-    }, 400);
+    });
   }
   const loc = VILLAGES.find((v) => v.id === state.world.location);
   document.getElementById('map-location-line').textContent = `📍 Currently in ${loc.name}`;
@@ -958,7 +961,10 @@ function openLore(landmarkId) {
 
 // ---------- daily draw wheel (section 7) ----------
 
-function buildWheelSlotsForDisplay(dateStr) {
+const WHEEL_SLOT_COUNT = 12;
+let wheelRotation = 0; // cosmetic only, not persisted
+
+function buildWheelSlotsForDay(dateStr) {
   const rand = seededRandom(dateStr + '|wheelDisplay');
   const combined = [
     ...WHEEL_RYO_VALUES.map((v) => ({ type: 'ryo', amount: v })),
@@ -968,23 +974,57 @@ function buildWheelSlotsForDisplay(dateStr) {
     const j = Math.floor(rand() * (i + 1));
     [combined[i], combined[j]] = [combined[j], combined[i]];
   }
-  const slots = combined.slice(0, 12);
+  const slots = combined.slice(0, WHEEL_SLOT_COUNT);
   const now = new Date();
-  if (WHEEL_BONUS_DAYS.includes(now.getDay())) slots[Math.floor(rand() * 12)] = { type: 'bonus' };
-  if (WHEEL_MYTHIC_DAYS.includes(now.getDate())) slots[Math.floor(rand() * 12)] = { type: 'mythic' };
+  if (WHEEL_BONUS_DAYS.includes(now.getDay())) slots[Math.floor(rand() * WHEEL_SLOT_COUNT)] = { type: 'bonus' };
+  if (WHEEL_MYTHIC_DAYS.includes(now.getDate())) slots[Math.floor(rand() * WHEEL_SLOT_COUNT)] = { type: 'mythic' };
   return slots;
 }
 
-function wheelSlotHTML(slot) {
-  if (slot.type === 'bonus') return `<div class="wheel-slot bonus">🎁 Item</div>`;
-  if (slot.type === 'mythic') return `<div class="wheel-slot mythic">✨ Mythic</div>`;
-  if (slot.type === 'ryo') return `<div class="wheel-slot">₽${slot.amount}</div>`;
-  return `<div class="wheel-slot">${slot.amount} XP</div>`;
+function slotLabel(slot) {
+  if (slot.type === 'bonus') return '🎁';
+  if (slot.type === 'mythic') return '✨';
+  if (slot.type === 'ryo') return `₽${slot.amount}`;
+  return `${slot.amount}xp`;
+}
+
+function slotFill(slot, index) {
+  if (slot.type === 'bonus') return '#3a6b52';
+  if (slot.type === 'mythic') return '#5a2f7a';
+  if (slot.type === 'ryo') return index % 2 === 0 ? '#8a6f3a' : '#6f5a2f';
+  return index % 2 === 0 ? '#2f4a6b' : '#375580';
+}
+
+function polarPoint(angleDeg, radius) {
+  const rad = (angleDeg * Math.PI) / 180;
+  return { x: 120 + radius * Math.sin(rad), y: 120 - radius * Math.cos(rad) };
+}
+
+function renderWheelSVG(slots) {
+  const R = 108;
+  const step = 360 / slots.length;
+  let wedges = '';
+  let labels = '';
+  slots.forEach((slot, i) => {
+    const start = i * step;
+    const end = start + step;
+    const p1 = polarPoint(start, R);
+    const p2 = polarPoint(end, R);
+    wedges += `<path d="M120,120 L${p1.x.toFixed(2)},${p1.y.toFixed(2)} A${R},${R} 0 0,1 ${p2.x.toFixed(2)},${p2.y.toFixed(2)} Z" fill="${slotFill(slot, i)}" stroke="#0c0f14" stroke-width="1.5"/>`;
+    const mid = start + step / 2;
+    const lp = polarPoint(mid, R * 0.64);
+    labels += `<text x="${lp.x.toFixed(2)}" y="${lp.y.toFixed(2)}" text-anchor="middle" dominant-baseline="middle" font-size="11" fill="#ece6d6">${slotLabel(slot)}</text>`;
+  });
+  document.getElementById('wheel-svg').innerHTML = `
+    <circle cx="120" cy="120" r="112" fill="none" stroke="#dba64c" stroke-width="3"/>
+    <g id="wheel-rotor" style="transform-origin:120px 120px; transform:rotate(${wheelRotation}deg);">${wedges}${labels}</g>
+    <circle cx="120" cy="120" r="15" fill="#151a23" stroke="#dba64c" stroke-width="2"/>
+  `;
 }
 
 function renderWheel() {
   const today = todayStr();
-  document.getElementById('wheel-slots').innerHTML = buildWheelSlotsForDisplay(today).map(wheelSlotHTML).join('');
+  renderWheelSVG(buildWheelSlotsForDay(today));
   const spun = state.wheel.lastSpinDate === today;
   document.getElementById('spin-btn').disabled = spun;
   document.getElementById('wheel-status').textContent = spun
@@ -1004,23 +1044,64 @@ function weightedPickItemId(pool, rarityWeights, rand) {
   return weighted[weighted.length - 1].it.id;
 }
 
-function applyWheelResult(result) {
-  if (result.type === 'ryo') {
-    state.ryo += result.amount;
-    state.wheel.lastResult = { label: `🎡 +${result.amount} ₽` };
-    toast(`🎡 Wheel: +${result.amount} ₽`);
-  } else if (result.type === 'xp') {
-    gainXp(result.amount);
-    state.wheel.lastResult = { label: `🎡 +${result.amount} XP` };
-    toast(`🎡 Wheel: +${result.amount} XP`);
-  } else if (result.type === 'item') {
-    const item = ITEMS.find((i) => i.id === result.itemId);
+// Which of the 12 rendered slots the spin lands on — the visual wheel and
+// the actual reward are always the same thing. A mythic/bonus slot (when
+// present that day) keeps its exact spec probability (1%/5%); everything
+// else splits the remaining mass across the ryo/xp slots using the
+// existing smaller-amounts-more-likely weighting.
+function pickWinningSlotIndex(slots, rand) {
+  const weights = new Array(slots.length).fill(0);
+  let reserved = 0;
+  slots.forEach((s, i) => {
+    if (s.type === 'mythic') {
+      weights[i] = WHEEL_MYTHIC_CHANCE;
+      reserved += WHEEL_MYTHIC_CHANCE;
+    } else if (s.type === 'bonus') {
+      weights[i] = WHEEL_BONUS_CHANCE;
+      reserved += WHEEL_BONUS_CHANCE;
+    }
+  });
+  const normalIdx = slots.map((_, i) => i).filter((i) => slots[i].type === 'ryo' || slots[i].type === 'xp');
+  const remaining = Math.max(0, 1 - reserved);
+  const raw = normalIdx.map((i) => {
+    const pool = slots[i].type === 'ryo' ? WHEEL_RYO_VALUES : WHEEL_XP_VALUES;
+    const rank = pool.indexOf(slots[i].amount);
+    return Math.pow(0.8, rank);
+  });
+  const rawTotal = raw.reduce((a, b) => a + b, 0) || 1;
+  normalIdx.forEach((i, k) => {
+    weights[i] = remaining * (raw[k] / rawTotal);
+  });
+
+  const totalWeight = weights.reduce((a, b) => a + b, 0) || 1;
+  let r = rand() * totalWeight;
+  for (let i = 0; i < weights.length; i++) {
+    r -= weights[i];
+    if (r <= 0) return i;
+  }
+  return weights.length - 1;
+}
+
+function applyWheelSlotResult(slot, rand) {
+  if (slot.type === 'ryo') {
+    state.ryo += slot.amount;
+    state.wheel.lastResult = { label: `🎡 +${slot.amount} ₽` };
+    toast(`🎡 Wheel: +${slot.amount} ₽`);
+  } else if (slot.type === 'xp') {
+    gainXp(slot.amount);
+    state.wheel.lastResult = { label: `🎡 +${slot.amount} XP` };
+    toast(`🎡 Wheel: +${slot.amount} XP`);
+  } else if (slot.type === 'bonus') {
+    const pool = ITEMS.filter((it) => !it.wheelOnly);
+    const item = ITEMS.find((i) => i.id === weightedPickItemId(pool, WHEEL_BONUS_RARITY_WEIGHTS, rand));
     grantItem(item.id);
     state.wheel.itemsWon.push(item.id);
     state.wheel.lastResult = { label: `🎁 Won ${item.name}!` };
     toast(`🎡 Wheel jackpot: ${item.name}!`);
-  } else if (result.type === 'mythic') {
-    const item = ITEMS.find((i) => i.id === result.itemId);
+  } else if (slot.type === 'mythic') {
+    const unowned = MYTHIC_ITEM_IDS.filter((id) => !state.inventory.includes(id));
+    const pickFrom = unowned.length ? unowned : MYTHIC_ITEM_IDS;
+    const item = ITEMS.find((i) => i.id === pickFrom[Math.floor(rand() * pickFrom.length)]);
     grantItem(item.id);
     state.wheel.mythicsWon.push(item.id);
     state.wheel.lastResult = { label: `✨ Mythic: ${item.name}!` };
@@ -1036,31 +1117,35 @@ function spinWheel() {
     toast('Already spun today — come back tomorrow.');
     return;
   }
+  document.getElementById('spin-btn').disabled = true;
+
+  const slots = buildWheelSlotsForDay(today);
   const rand = Math.random;
-  const now = new Date();
-  let result = null;
+  const winningIndex = pickWinningSlotIndex(slots, rand);
 
-  if (WHEEL_MYTHIC_DAYS.includes(now.getDate()) && rand() < WHEEL_MYTHIC_CHANCE) {
-    const unowned = MYTHIC_ITEM_IDS.filter((id) => !state.inventory.includes(id));
-    if (unowned.length) result = { type: 'mythic', itemId: unowned[Math.floor(rand() * unowned.length)] };
-  }
-  if (!result && WHEEL_BONUS_DAYS.includes(now.getDay()) && rand() < WHEEL_BONUS_CHANCE) {
-    const pool = ITEMS.filter((it) => !it.wheelOnly);
-    result = { type: 'item', itemId: weightedPickItemId(pool, WHEEL_BONUS_RARITY_WEIGHTS, rand) };
-  }
-  if (!result) {
-    const pickRyo = rand() < 0.5;
-    const values = pickRyo ? WHEEL_RYO_VALUES : WHEEL_XP_VALUES;
-    const idx = weightedIndex(values.length, rand);
-    result = pickRyo ? { type: 'ryo', amount: values[idx] } : { type: 'xp', amount: values[idx] };
+  const step = 360 / slots.length;
+  const targetAngle = winningIndex * step + step / 2;
+  const targetMod = (360 - (targetAngle % 360) + 360) % 360;
+  const currentMod = ((wheelRotation % 360) + 360) % 360;
+  let delta = targetMod - currentMod;
+  if (delta <= 0) delta += 360;
+  wheelRotation += 6 * 360 + delta;
+
+  const rotor = document.getElementById('wheel-rotor');
+  if (rotor) {
+    rotor.style.transition = 'transform 3.2s cubic-bezier(0.17, 0.67, 0.1, 1)';
+    rotor.style.transform = `rotate(${wheelRotation}deg)`;
   }
 
-  applyWheelResult(result);
-  state.wheel.lastSpinDate = today;
-  state.wheel.totalSpins += 1;
-  persist();
-  renderWheel();
-  checkAchievements();
+  setTimeout(() => {
+    applyWheelSlotResult(slots[winningIndex], rand);
+    state.wheel.lastSpinDate = today;
+    state.wheel.totalSpins += 1;
+    persist();
+    document.getElementById('wheel-status').textContent = 'Already spun today — come back tomorrow.';
+    document.getElementById('wheel-result').textContent = state.wheel.lastResult.label;
+    checkAchievements();
+  }, 3300);
 }
 
 // ---------- people tab (section 11) ----------
