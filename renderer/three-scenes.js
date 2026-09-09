@@ -297,6 +297,175 @@ function highlightCard(card) {
   setTimeout(() => card.classList.remove('flash-highlight'), 1200);
 }
 
+// Muted terrain tones per village's biome (matches the doc's terrain
+// descriptions), used to paint the ground; brighter marker tones so pins
+// stay visible against ground of a similar hue.
+const REGION_GROUND_COLORS = {
+  leaf: '#3f6b3a',
+  rain: '#2f5a52',
+  sand: '#c9a24b',
+  stone: '#8a7a5f',
+  mist: '#4f6f82',
+  cloud: '#6b5f8c',
+};
+const REGION_MARKER_COLORS = {
+  leaf: '#5fd15f',
+  rain: '#4fd1c9',
+  sand: '#f0c060',
+  stone: '#c9b89a',
+  mist: '#7fc9f0',
+  cloud: '#c9a0f0',
+};
+const LANDMARK_MARKER_COLORS = {
+  valley: '#e2703f',
+  forest: '#3a6b3a',
+  waves: '#4f8fd1',
+  tenchi: '#c9a06c',
+  myoboku: '#6fbf6f',
+  ryuchi: '#8a5fc9',
+  turtle: '#3fd1c0',
+  iron: '#e6eaf0',
+  waterfall: '#5fd1e8',
+  tanzaku: '#e88ac0',
+};
+const MOUNTAIN_VILLAGE_IDS = ['stone', 'cloud'];
+const SEA_VILLAGE_ID = 'mist';
+
+function computeVillagePositions() {
+  const positions = { leaf: { x: 0, z: 0 } };
+  const others = VILLAGES.filter((v) => v.id !== 'leaf');
+  others.forEach((v, i) => {
+    const angle = (i / others.length) * Math.PI * 2;
+    const radius = 2 + v.daysFromLeaf * 2.2;
+    positions[v.id] = { x: Math.cos(angle) * radius, z: Math.sin(angle) * radius };
+  });
+  return positions;
+}
+
+function terrainColorAt(THREE, x, z, positions) {
+  let totalW = 0;
+  let r = 0;
+  let g = 0;
+  let b = 0;
+  const c = new THREE.Color();
+  Object.entries(positions).forEach(([id, pos]) => {
+    const d2 = Math.max(0.6, (x - pos.x) ** 2 + (z - pos.z) ** 2);
+    const w = 1 / (d2 * d2);
+    c.set(REGION_GROUND_COLORS[id]);
+    r += c.r * w;
+    g += c.g * w;
+    b += c.b * w;
+    totalW += w;
+  });
+  return new THREE.Color(r / totalW, g / totalW, b / totalW);
+}
+
+function terrainHeightAt(x, z, positions) {
+  const dist = Math.sqrt(x * x + z * z);
+  let h = dist * 0.05; // gentle general rise from the home plateau outward
+  MOUNTAIN_VILLAGE_IDS.forEach((id) => {
+    const pos = positions[id];
+    if (!pos) return;
+    const d = Math.sqrt((x - pos.x) ** 2 + (z - pos.z) ** 2);
+    h += Math.max(0, 3.4 - d * 0.4);
+  });
+  const sea = positions[SEA_VILLAGE_ID];
+  if (sea) {
+    const d = Math.sqrt((x - sea.x) ** 2 + (z - sea.z) ** 2);
+    h -= Math.max(0, 1.8 - d * 0.32);
+  }
+  return h;
+}
+
+function buildTerrainMesh(THREE, radius, positions) {
+  const rings = 22;
+  const segments = 48;
+  const positionsArr = [];
+  const colorsArr = [];
+  const indices = [];
+
+  function pushVertex(x, z) {
+    const y = terrainHeightAt(x, z, positions);
+    positionsArr.push(x, y, z);
+    const c = terrainColorAt(THREE, x, z, positions);
+    colorsArr.push(c.r, c.g, c.b);
+  }
+
+  pushVertex(0, 0);
+  for (let r = 1; r <= rings; r++) {
+    const rad = (r / rings) * radius;
+    for (let s = 0; s < segments; s++) {
+      const theta = (s / segments) * Math.PI * 2;
+      pushVertex(Math.cos(theta) * rad, Math.sin(theta) * rad);
+    }
+  }
+
+  for (let s = 0; s < segments; s++) {
+    indices.push(0, 1 + s, 1 + ((s + 1) % segments));
+  }
+  for (let r = 1; r < rings; r++) {
+    const ringStart = 1 + (r - 1) * segments;
+    const nextStart = 1 + r * segments;
+    for (let s = 0; s < segments; s++) {
+      const a = ringStart + s;
+      const b = ringStart + ((s + 1) % segments);
+      const c = nextStart + s;
+      const d = nextStart + ((s + 1) % segments);
+      indices.push(a, b, d, a, d, c);
+    }
+  }
+
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(positionsArr, 3));
+  geo.setAttribute('color', new THREE.Float32BufferAttribute(colorsArr, 3));
+  geo.setIndex(indices);
+  geo.computeVertexNormals();
+  const mat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.88, metalness: 0.02 });
+  return new THREE.Mesh(geo, mat);
+}
+
+// Small scattered scenery per biome — trees in the forests, rocks in the
+// mountains, scrub in the desert — so each region reads as its own place
+// rather than a flat color swatch.
+function scatterDecor(THREE, world, positions) {
+  const rand = seededRandom('mapDecor');
+  const specs = [
+    { near: 'leaf', color: '#2f5f2f', shape: 'cone', count: 10, spread: 3.2 },
+    { near: 'rain', color: '#26463f', shape: 'cone', count: 9, spread: 3 },
+    { near: 'sand', color: '#8a6f2f', shape: 'cone', count: 7, spread: 3 },
+    { near: 'stone', color: '#6b6355', shape: 'box', count: 9, spread: 3.4 },
+    { near: 'cloud', color: '#7a6f95', shape: 'box', count: 8, spread: 3.4 },
+  ];
+  specs.forEach((spec) => {
+    const pos = positions[spec.near];
+    if (!pos) return;
+    for (let i = 0; i < spec.count; i++) {
+      const angle = rand() * Math.PI * 2;
+      const dist = rand() * spec.spread + 0.9;
+      const x = pos.x + Math.cos(angle) * dist;
+      const z = pos.z + Math.sin(angle) * dist;
+      const size = 0.2 + rand() * 0.3;
+      const y = terrainHeightAt(x, z, positions);
+      let mesh;
+      if (spec.shape === 'cone') {
+        mesh = new THREE.Mesh(
+          new THREE.ConeGeometry(size * 0.5, size * 1.7, 6),
+          new THREE.MeshStandardMaterial({ color: spec.color, roughness: 0.8 })
+        );
+        mesh.position.set(x, y + size * 0.85, z);
+      } else {
+        mesh = new THREE.Mesh(
+          new THREE.BoxGeometry(size, size * 0.75, size),
+          new THREE.MeshStandardMaterial({ color: spec.color, roughness: 0.9 })
+        );
+        mesh.rotation.y = rand() * Math.PI;
+        mesh.position.set(x, y + size * 0.37, z);
+      }
+      world.add(mesh);
+    }
+  });
+}
+
 function initWorldMap3D() {
   if (map3D || !window.THREE) return;
   const THREE = window.THREE;
@@ -317,31 +486,28 @@ function initWorldMap3D() {
   renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
   wrap.appendChild(renderer.domElement);
 
-  scene.add(new THREE.AmbientLight(0xffffff, 0.6));
-  const sun = new THREE.DirectionalLight(0xfff2d9, 1.0);
+  scene.add(new THREE.AmbientLight(0xffffff, 0.65));
+  const sun = new THREE.DirectionalLight(0xfff2d9, 1.05);
   sun.position.set(-10, 20, 10);
   scene.add(sun);
+  const fill = new THREE.DirectionalLight(0x9ecbe8, 0.3);
+  fill.position.set(8, 10, -6);
+  scene.add(fill);
 
   const world = new THREE.Group();
   scene.add(world);
 
-  const disc = new THREE.Mesh(
-    new THREE.CylinderGeometry(15, 15, 1, 48),
-    new THREE.MeshStandardMaterial({ color: '#3f5a3f', roughness: 0.9 })
-  );
-  world.add(disc);
-
-  const rim = new THREE.Mesh(new THREE.TorusGeometry(15, 0.35, 12, 48), new THREE.MeshStandardMaterial({ color: '#8a6f3a', roughness: 0.8 }));
-  rim.rotation.x = Math.PI / 2;
-  rim.position.y = 0.5;
-  world.add(rim);
+  const positions = computeVillagePositions();
+  world.add(buildTerrainMesh(THREE, 15, positions));
+  scatterDecor(THREE, world, positions);
 
   const markers = {};
 
   function addMarker(id, kind, x, z, color, scale) {
+    const groundY = terrainHeightAt(x, z, positions);
     const geo = kind === 'village' ? new THREE.ConeGeometry(0.7 * scale, 1.4 * scale, 8) : new THREE.ConeGeometry(0.35, 0.7, 6);
-    const mesh = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ color, roughness: 0.5 }));
-    mesh.position.set(x, 0.5 + (kind === 'village' ? 0.7 * scale : 0.35), z);
+    const mesh = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ color, roughness: 0.45 }));
+    mesh.position.set(x, groundY + 0.1 + (kind === 'village' ? 0.7 * scale : 0.35), z);
     mesh.userData = { id, kind };
     world.add(mesh);
     markers[id] = mesh;
@@ -349,21 +515,19 @@ function initWorldMap3D() {
 
   // Leaf at the center (home turf); the other 5 villages spread evenly
   // around it, radius scaled by days-of-travel from Leaf.
-  const others = VILLAGES.filter((v) => v.id !== 'leaf');
-  addMarker('leaf', 'village', 0, 0, '#dba64c', 1.3);
-  others.forEach((v, i) => {
-    const angle = (i / others.length) * Math.PI * 2;
-    const radius = 2 + v.daysFromLeaf * 2.2;
-    addMarker(v.id, 'village', Math.cos(angle) * radius, Math.sin(angle) * radius, '#4f8fd1', 1);
+  Object.entries(positions).forEach(([id, pos]) => {
+    const scale = id === 'leaf' ? 1.3 : 1;
+    addMarker(id, 'village', pos.x, pos.z, REGION_MARKER_COLORS[id], scale);
   });
 
   // Landmarks scattered at a seeded angle/radius so placement is stable
-  // across sessions without needing real geographic coordinates.
+  // across sessions without needing real geographic coordinates — each
+  // gets its own thematic color rather than one uniform marker tone.
   LANDMARKS.forEach((l) => {
     const rand = seededRandom('landmark|' + l.id);
     const angle = rand() * Math.PI * 2;
     const radius = 4 + rand() * 9;
-    addMarker(l.id, 'landmark', Math.cos(angle) * radius, Math.sin(angle) * radius, '#a06cd5', 1);
+    addMarker(l.id, 'landmark', Math.cos(angle) * radius, Math.sin(angle) * radius, LANDMARK_MARKER_COLORS[l.id] || '#a06cd5', 1);
   });
 
   const raycaster = new THREE.Raycaster();
@@ -414,7 +578,7 @@ function syncWorldMap3D() {
   Object.entries(map3D.markers).forEach(([id, mesh]) => {
     if (mesh.userData.kind !== 'village') return;
     const isCurrent = id === state.world.location;
-    mesh.material.color.set(isCurrent ? '#dba64c' : '#4f8fd1');
+    mesh.material.color.set(isCurrent ? '#dba64c' : REGION_MARKER_COLORS[id] || '#7fc9f0');
     mesh.scale.setScalar(isCurrent ? 1.3 : 1);
   });
 }
