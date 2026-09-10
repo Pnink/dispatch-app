@@ -199,7 +199,7 @@ const NINK_DATA = {
       xp: 8000, ryo: 220, mapLocation: 'sand',
       blurb: 'Akatsuki kidnap Gaara. Sasori’s puppet army stands between the team and getting him back alive.',
       beats: [
-        'Race to the Hidden Sand Village alongside Team Guy.',
+        'Race to Sunagakure alongside Team Guy.',
         'Chiyo and Sakura hold the line against Sasori’s puppet army.',
         'Track the trail to the hidden cave where Gaara is held.',
       ],

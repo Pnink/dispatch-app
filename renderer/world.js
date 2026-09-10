@@ -1,12 +1,12 @@
 // The Nink Saga — World Map (section 8) and Daily Draw wheel (section 7) data.
 
 const VILLAGES = [
-  { id: 'leaf', name: 'Hidden Leaf Village', daysFromLeaf: 0, terrain: 'home turf, forested valleys' },
-  { id: 'rain', name: 'Hidden Rain Village', daysFromLeaf: 1, terrain: 'a soggy trek through rain-soaked forest' },
-  { id: 'sand', name: 'Hidden Sand Village', daysFromLeaf: 2, terrain: 'a long crossing through open desert' },
-  { id: 'stone', name: 'Hidden Stone Village', daysFromLeaf: 3, terrain: 'a hard climb through rocky highlands' },
-  { id: 'mist', name: 'Hidden Mist Village', daysFromLeaf: 4, terrain: 'a foggy sea crossing by boat' },
-  { id: 'cloud', name: 'Hidden Cloud Village', daysFromLeaf: 5, terrain: 'a brutal climb through storm-wracked mountains' },
+  { id: 'leaf', name: 'Konohagakure', daysFromLeaf: 0, terrain: 'home turf, forested valleys' },
+  { id: 'rain', name: 'Amegakure', daysFromLeaf: 1, terrain: 'a soggy trek through rain-soaked forest' },
+  { id: 'sand', name: 'Sunagakure', daysFromLeaf: 2, terrain: 'a long crossing through open desert' },
+  { id: 'stone', name: 'Iwagakure', daysFromLeaf: 3, terrain: 'a hard climb through rocky highlands' },
+  { id: 'mist', name: 'Kirigakure', daysFromLeaf: 4, terrain: 'a foggy sea crossing by boat' },
+  { id: 'cloud', name: 'Kumogakure', daysFromLeaf: 5, terrain: 'a brutal climb through storm-wracked mountains' },
 ];
 
 const LANDMARKS = [
