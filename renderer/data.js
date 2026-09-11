@@ -1,0 +1,377 @@
+// The Nink Saga — game data, transcribed from the design reference doc.
+// Ranks, quests, story chapters, and skills. Numbers are the source of truth;
+// keep them in sync with the design doc if it changes.
+
+const NINK_DATA = {
+  ranks: [
+    { tier: 0, name: 'Low Academy Student', xp: 0 },
+    { tier: 1, name: 'Academy Student', xp: 7000 },
+    { tier: 2, name: 'High Academy Student', xp: 58000 },
+    { tier: 3, name: 'Low Genin', xp: 197000 },
+    { tier: 4, name: 'Genin', xp: 466000 },
+    { tier: 5, name: 'High Genin', xp: 911000 },
+    { tier: 6, name: 'Low Chūnin', xp: 1574000 },
+    { tier: 7, name: 'Chūnin', xp: 2500000 },
+    { tier: 8, name: 'High Chūnin', xp: 3732000 },
+    { tier: 9, name: 'Low Jōnin', xp: 5313000 },
+    { tier: 10, name: 'Jōnin', xp: 7289000 },
+    { tier: 11, name: 'High Jōnin', xp: 9698000 },
+    { tier: 12, name: 'Low Kage', xp: 12595000 },
+    { tier: 13, name: 'Kage', xp: 16009000 },
+    { tier: 14, name: 'High Kage', xp: 20000000 },
+  ],
+
+  // Always shown, all 4 every day.
+  coreQuests: [
+    { id: 'core-1', title: 'Put in one focused hour on your business', stat: 'business', xp: 500, ryo: 12 },
+    { id: 'core-2', title: 'Train — soccer practice, touches, or a fitness session', stat: 'body', xp: 500, ryo: 12 },
+    { id: 'core-3', title: 'Create or post one piece of Nink content', stat: 'brand', xp: 500, ryo: 12 },
+    { id: 'core-4', title: 'Learn one new business, investing, or crypto term and use it in a sentence', stat: 'mind', xp: 300, ryo: 8 },
+  ],
+
+  // Rotating pool — 6 shown per day, seeded by date, no Ryō. Heavily
+  // expanded on player request for more day-to-day variety, especially
+  // health/physical options.
+  simpleQuests: [
+    { id: 'simple-1', title: 'No mindless phone scrolling today — catch yourself and put it down', stat: 'mind', xp: 60 },
+    { id: 'simple-2', title: 'Stay productive through the whole day, no dead stretches', stat: 'business', xp: 60 },
+    { id: 'simple-3', title: 'Eat healthy today — no junk, no skipped meals', stat: 'body', xp: 60 },
+    { id: 'simple-4', title: 'Get 8 hours of sleep last night', stat: 'body', xp: 80 },
+    { id: 'simple-5', title: 'Go for a run', stat: 'body', xp: 100 },
+    { id: 'simple-6', title: 'Study or review for a test — stay ahead in school', stat: 'mind', xp: 70 },
+    { id: 'simple-7', title: 'Drink enough water today', stat: 'body', xp: 50 },
+    { id: 'simple-8', title: 'Stretch or do some mobility work', stat: 'body', xp: 50 },
+    { id: 'simple-9', title: 'Read for 15 minutes', stat: 'mind', xp: 50 },
+    { id: 'simple-10', title: 'Make your bed and start the day with a small win', stat: 'business', xp: 60 },
+    { id: 'simple-11', title: "Knock out one annoying chore or errand you've been putting off", stat: 'business', xp: 60 },
+    { id: 'simple-12', title: 'Save or jot down one content idea for later, even a bad one', stat: 'brand', xp: 50 },
+    { id: 'simple-13', title: 'Put in a second hour of focused business work, beyond your usual block', stat: 'business', xp: 120 },
+    { id: 'simple-14', title: 'Do a longer session today — go past your normal stopping point', stat: 'body', xp: 110 },
+    { id: 'simple-15', title: 'Spend 30 extra minutes learning something useful, beyond the basics', stat: 'mind', xp: 90 },
+    { id: 'simple-16', title: 'Reach out to one potential customer or contact today', stat: 'business', xp: 100 },
+    // Body / health / physical
+    { id: 'simple-17', title: 'Take a cold shower — even 30 seconds counts', stat: 'body', xp: 60 },
+    { id: 'simple-18', title: 'Hit 10,000 steps today', stat: 'body', xp: 90 },
+    { id: 'simple-19', title: 'Do 50 push-ups today, spread out however you like', stat: 'body', xp: 90 },
+    { id: 'simple-20', title: 'Do 20 minutes of cardio', stat: 'body', xp: 100 },
+    { id: 'simple-21', title: 'Take the stairs instead of the elevator all day', stat: 'body', xp: 40 },
+    { id: 'simple-22', title: 'Get 15 minutes of sunlight outside', stat: 'body', xp: 50 },
+    { id: 'simple-23', title: 'Do a posture check every hour today', stat: 'body', xp: 40 },
+    { id: 'simple-24', title: 'Foam roll or stretch out a tight muscle', stat: 'body', xp: 50 },
+    { id: 'simple-25', title: 'Eat a vegetable with every meal today', stat: 'body', xp: 60 },
+    { id: 'simple-26', title: 'Skip the soda or energy drinks today', stat: 'body', xp: 50 },
+    { id: 'simple-27', title: 'Do a 10-minute mobility or yoga flow', stat: 'body', xp: 60 },
+    { id: 'simple-28', title: 'Meal-prep something healthy for tomorrow', stat: 'body', xp: 80 },
+    { id: 'simple-29', title: 'Get to bed 30 minutes earlier tonight', stat: 'body', xp: 60 },
+    { id: 'simple-30', title: "Do a core workout — planks, crunches, whatever you've got", stat: 'body', xp: 80 },
+    { id: 'simple-31', title: 'Take a walk after a meal today', stat: 'body', xp: 50 },
+    { id: 'simple-32', title: 'Do a full stretch routine, head to toe', stat: 'body', xp: 70 },
+    { id: 'simple-33', title: 'No fast food today', stat: 'body', xp: 60 },
+    { id: 'simple-34', title: 'Do 3 sets of squats or lunges', stat: 'body', xp: 80 },
+    { id: 'simple-35', title: 'Practice deep breathing for 5 minutes', stat: 'body', xp: 40 },
+    { id: 'simple-36', title: 'Get protein in at breakfast', stat: 'body', xp: 50 },
+    // Mind
+    { id: 'simple-37', title: 'Journal for 5 minutes about your day', stat: 'mind', xp: 50 },
+    { id: 'simple-38', title: 'Meditate for 10 minutes', stat: 'mind', xp: 60 },
+    { id: 'simple-39', title: 'Learn a new word and use it today', stat: 'mind', xp: 40 },
+    { id: 'simple-40', title: 'Listen to a podcast or audiobook chapter on something useful', stat: 'mind', xp: 60 },
+    { id: 'simple-41', title: 'Do a crossword, sudoku, or brain puzzle', stat: 'mind', xp: 40 },
+    { id: 'simple-42', title: 'Plan out tomorrow before bed tonight', stat: 'mind', xp: 50 },
+    { id: 'simple-43', title: 'Spend 10 minutes reviewing what you learned this week', stat: 'mind', xp: 60 },
+    { id: 'simple-44', title: 'Take a 20-minute break from all screens', stat: 'mind', xp: 50 },
+    // Business
+    { id: 'simple-45', title: 'Review your budget or spending for 10 minutes', stat: 'business', xp: 60 },
+    { id: 'simple-46', title: "Send one follow-up message you've been putting off", stat: 'business', xp: 60 },
+    { id: 'simple-47', title: 'Organize your workspace or files for 10 minutes', stat: 'business', xp: 50 },
+    { id: 'simple-48', title: 'Write down one new business idea, good or bad', stat: 'business', xp: 40 },
+    { id: 'simple-49', title: 'Watch or read one piece of content about your industry', stat: 'business', xp: 50 },
+    { id: 'simple-50', title: "Set tomorrow's #1 priority before you stop working today", stat: 'business', xp: 40 },
+    { id: 'simple-51', title: 'Track today\'s time — where did the hours actually go', stat: 'business', xp: 50 },
+    // Brand
+    { id: 'simple-52', title: 'Comment or engage with 3 posts in your niche today', stat: 'brand', xp: 40 },
+    { id: 'simple-53', title: 'Reply to every comment on your last post', stat: 'brand', xp: 40 },
+    { id: 'simple-54', title: 'Take a behind-the-scenes photo or clip for later', stat: 'brand', xp: 40 },
+    { id: 'simple-55', title: 'Study one creator you admire for 10 minutes — what are they doing well', stat: 'brand', xp: 50 },
+    { id: 'simple-56', title: 'Batch-write 3 content ideas for the week', stat: 'brand', xp: 60 },
+    { id: 'simple-57', title: 'Update your bio or profile — make it sharper', stat: 'brand', xp: 40 },
+    { id: 'simple-58', title: 'Repost or share something today, even a small one', stat: 'brand', xp: 30 },
+  ],
+
+  // Rare pool of 8 — ~1 in 5 days, seeded, shown 5th with fire styling.
+  hardQuests: [
+    { id: 'hard-1', title: 'Put in 3 full focused hours on your business today, no distractions', stat: 'business', xp: 1400, ryo: 60 },
+    { id: 'hard-2', title: 'Reach out to 5 potential customers or contacts today', stat: 'business', xp: 1200, ryo: 55 },
+    { id: 'hard-3', title: 'Do a full extra workout session beyond your normal one', stat: 'body', xp: 1300, ryo: 55 },
+    { id: 'hard-4', title: 'No phone for the first 2 hours and last 2 hours of your day', stat: 'mind', xp: 1100, ryo: 50 },
+    { id: 'hard-5', title: 'Read 30+ pages of a book, start to finish in one sitting', stat: 'mind', xp: 1000, ryo: 45 },
+    { id: 'hard-6', title: "Ship something today — publish, launch, or send whatever you've been sitting on", stat: 'brand', xp: 1250, ryo: 55 },
+    { id: 'hard-7', title: 'Track every dollar you spend today, no exceptions', stat: 'business', xp: 1000, ryo: 45 },
+    { id: 'hard-8', title: "Have a real, honest conversation with someone about where you're headed", stat: 'body', xp: 1150, ryo: 50 },
+  ],
+
+  // The 7 story-unlocked skills now live in jutsu.js (JUTSU, category: 'story'),
+  // alongside mentor-taught, rank-unlocked, and forbidden jutsu.
+
+  // 20 story chapters. beatXp/beatRyo apply per beat (150 XP + 10 Ryō each, per spec).
+  beatXp: 150,
+  beatRyo: 10,
+  chapters: [
+    {
+      num: 1, title: 'The Academy Graduation', boss: 'Mizuki', bossHp: 300, bossDmg: 12, unlockTier: 0,
+      xp: 2000, ryo: 80, mapLocation: 'leaf',
+      blurb: 'Tricked by Mizuki into stealing the Sacred Scroll, you learn the Multi-Shadow Clone Jutsu and defend Iruka Sensei.',
+      beats: [
+        'Chase Tora the cat across the Konoha rooftops one more time.',
+        'Dodge Konohamaru’s surprise ambush in the village square.',
+        'Iruka pulls you aside after the exam — Mizuki has a "proposition."',
+      ],
+    },
+    {
+      num: 2, title: 'The Land of Waves', boss: 'Haku', bossHp: 500, bossDmg: 18, unlockTier: 1,
+      xp: 3000, ryo: 110, mapLocation: 'waves',
+      blurb: 'Team 7 escorts Tazuna past the Demon Brothers, Zabuza, and his masked apprentice Haku on the mist-covered bridge.',
+      beats: [
+        'Take on the escort mission and bring the traveler, Tazuna, with you out of the Land of Fire.',
+        'Fight off the Demon Brothers’ ambush on the road.',
+        'Complete tree-climbing training to sharpen your chakra control before the bridge.',
+      ],
+    },
+    {
+      num: 3, title: 'The Chūnin Selection Exams', boss: 'Orochimaru (disguised)', bossHp: 700, bossDmg: 22, unlockTier: 2,
+      xp: 4200, ryo: 140, mapLocation: 'forest',
+      blurb: 'The Forest of Death, a curse mark from Orochimaru, and brutal 1v1 preliminaries thin the crowded roster.',
+      beats: [
+        'Pass the written test without getting caught cheating.',
+        'Survive the Forest of Death and secure the missing scroll.',
+        'Watch Rock Lee fall to Gaara’s sand in the preliminaries — you’re up next.',
+      ],
+    },
+    {
+      num: 4, title: 'The One-Month Training Interval', boss: 'Trial Toad', bossHp: 650, bossDmg: 20, unlockTier: 3,
+      xp: 4000, ryo: 130, mapLocation: 'myoboku',
+      blurb: 'Jiraiya unseals your chakra and pushes you off a cliff — sink or summon Gamabunta.',
+      beats: [
+        'Grind through Ebisu’s brutal timed obstacle course.',
+        'Keep Jiraiya out of trouble — and away from the hot springs — in town.',
+        'Get thrown off a cliff. Literally.',
+      ],
+    },
+    {
+      num: 5, title: 'Destruction of the Leaf', boss: 'One-Tailed Shukaku', bossHp: 1100, bossDmg: 30, unlockTier: 4,
+      xp: 6000, ryo: 180, mapLocation: 'leaf',
+      blurb: 'The finals erupt into a full invasion. The Third Hokage falls sealing away Orochimaru; you face Shukaku outside the walls.',
+      beats: [
+        'Beat Neji by tunneling straight through his "Absolute Defense."',
+        'Guide civilians through the burning streets to safety.',
+        'The invasion hits — the Third Hokage buys the village time with his life.',
+      ],
+    },
+    {
+      num: 6, title: 'The Search for Tsunade', boss: 'Kabuto Yakushi', bossHp: 1050, bossDmg: 28, unlockTier: 5,
+      xp: 5800, ryo: 170, mapLocation: 'tanzaku',
+      blurb: 'Akatsuki ambush the group, Sasuke is tortured by Itachi’s genjutsu, and Kabuto stands between you and Tsunade.',
+      beats: [
+        'Track Tsunade through the gambling dens of Tanzaku Town.',
+        'Survive Itachi and Kisame’s ambush at the teahouse.',
+        'Bet Tsunade you can master the Rasengan in one week.',
+      ],
+    },
+    {
+      num: 7, title: 'Sasuke Retrieval Mission', boss: 'Sasuke (Curse Mark)', bossHp: 1300, bossDmg: 34, unlockTier: 6,
+      xp: 7000, ryo: 200, mapLocation: 'valley',
+      blurb: 'Sasuke defects with the Sound Four. The chase ends at the Valley of the End in a clash you narrowly lose.',
+      beats: [
+        'Watch Shikamaru’s retrieval team fall one by one to the Sound Four.',
+        'Rock Lee and the Sand siblings arrive just in time to even the odds.',
+        'Catch up to Sasuke alone at the Valley of the End.',
+      ],
+    },
+    {
+      num: 8, title: 'The Kazekage Rescue Mission', boss: 'Sasori of the Red Sand', bossHp: 1500, bossDmg: 38, unlockTier: 7,
+      xp: 8000, ryo: 220, mapLocation: 'sand',
+      blurb: 'Akatsuki kidnap Gaara. Sasori’s puppet army stands between the team and getting him back alive.',
+      beats: [
+        'Race to Sunagakure alongside Team Guy.',
+        'Chiyo and Sakura hold the line against Sasori’s puppet army.',
+        'Track the trail to the hidden cave where Gaara is held.',
+      ],
+    },
+    {
+      num: 9, title: 'Long-Awaited Reunion', boss: 'Orochimaru', bossHp: 1450, bossDmg: 36, unlockTier: 7,
+      xp: 7800, ryo: 210, mapLocation: 'tenchi',
+      blurb: 'A new Team 7 finds Orochimaru’s hideout — and Sasuke, colder and far stronger than before.',
+      beats: [
+        'Meet the new Team 7 — Sai and Captain Yamato included.',
+        'A routine informant meeting turns into an ambush.',
+        'Push into Orochimaru’s underground hideout after him.',
+      ],
+    },
+    {
+      num: 10, title: 'Immortal Akatsuki', boss: 'Kakuzu', bossHp: 1700, bossDmg: 42, unlockTier: 8,
+      xp: 9000, ryo: 240, mapLocation: 'leaf',
+      blurb: 'Hidan and Kakuzu kill Asuma. You arrive with your new Wind Style: Rasenshuriken to end it.',
+      beats: [
+        'Train to fold wind-nature chakra into your Rasengan.',
+        'Team 10 intercepts Hidan and Kakuzu — it goes badly.',
+        'Arrive on the battlefield to save what’s left of the team.',
+      ],
+    },
+    {
+      num: 11, title: 'The Master’s Prophecy and Revenge', boss: 'Itachi Uchiha', bossHp: 1900, bossDmg: 46, unlockTier: 9,
+      xp: 9500, ryo: 260, mapLocation: 'rain',
+      gearTip: 'Come geared up — a rare weapon or better makes this winnable.',
+      blurb: 'Jiraiya falls to Pain in the Hidden Rain. Sasuke finally catches Itachi in a battle of illusions and flame.',
+      beats: [
+        'Sasuke kills a weakened Orochimaru and sets out alone.',
+        'Jiraiya infiltrates the Hidden Rain looking for Pain.',
+        'Sasuke finally corners Itachi.',
+      ],
+    },
+    {
+      num: 12, title: 'Pain’s Assault on Konoha', boss: 'Pain (Deva Path)', bossHp: 2300, bossDmg: 52, unlockTier: 10,
+      xp: 11000, ryo: 300, mapLocation: 'leaf',
+      gearTip: 'Pain hits hard — stack HP gear or this one stings.',
+      blurb: 'Pain flattens the village. You fight the Six Paths, break down, and pull it back together with words instead of violence.',
+      beats: [
+        'Master Sage Mode at Mount Myōboku.',
+        'Watch Pain level the village searching for you.',
+        'Hinata steps between you and the Deva Path.',
+      ],
+    },
+    {
+      num: 13, title: 'The Five Kage Summit', boss: 'Danzo Shimura', bossHp: 2150, bossDmg: 50, unlockTier: 10,
+      xp: 10500, ryo: 290, mapLocation: 'iron',
+      gearTip: 'A shield-heavy accessory or gloves setup helps a lot here.',
+      blurb: 'Sasuke crashes the summit and kills Danzo. Tobi declares the Fourth Shinobi World War.',
+      beats: [
+        'The Five Kage gather in the snowbound Land of Iron.',
+        'Sasuke crashes the summit, hunting his brother’s killer.',
+        'Danzo makes a run for it.',
+      ],
+    },
+    {
+      num: 14, title: 'War Preparations', boss: 'Inner Kurama', bossHp: 2100, bossDmg: 48, unlockTier: 11,
+      xp: 10200, ryo: 280, mapLocation: 'turtle',
+      gearTip: 'Kurama doesn’t go easy — epic-tier gear or better recommended.',
+      blurb: 'On the Isolated Island, you face your own hatred at the Waterfall of Truth, then Kurama itself.',
+      beats: [
+        'Head to the Isolated Island with Killer Bee for safekeeping.',
+        'Face down your own hatred at the Waterfall of Truth.',
+        'Go inward to confront the Nine-Tails directly.',
+      ],
+    },
+    {
+      num: 15, title: 'The Fourth Shinobi World War: Confrontation', boss: 'Edo Tensei Vanguard', bossHp: 2600, bossDmg: 56, unlockTier: 11,
+      xp: 12000, ryo: 320, mapLocation: 'turtle',
+      gearTip: 'This one’s a slog by design — bring your best weapon.',
+      blurb: '100,000 White Zetsu clones and Kabuto’s reanimated army hit every front at once.',
+      beats: [
+        'The war opens on every front simultaneously.',
+        'Sense out disguised White Zetsu hiding among the ranks.',
+        'Itachi breaks free of Kabuto’s control mid-battle.',
+      ],
+    },
+    {
+      num: 16, title: 'Resurrection of the Ultimate Villain', boss: 'Madara Uchiha', bossHp: 3200, bossDmg: 65, unlockTier: 12,
+      xp: 14000, ryo: 380, mapLocation: 'iron',
+      gearTip: 'Legendary-tier gear or a strong summon is the difference here.',
+      blurb: 'The real Madara Uchiha drops meteors on the battlefield and shatters the Five Kage.',
+      beats: [
+        'Meteors fall across the battlefield, wiping out a division.',
+        'Kakashi realizes Tobi’s space matches his own Kamui.',
+        'The mask finally shatters — Obito is revealed.',
+      ],
+    },
+    {
+      num: 17, title: 'The Ultimate Dream', boss: 'Kaguya Otsutsuki', bossHp: 3700, bossDmg: 75, unlockTier: 13,
+      xp: 16000, ryo: 420, mapLocation: 'ryuchi',
+      gearTip: 'One of the hardest fights in the game — full legendary loadout recommended.',
+      blurb: 'The Ten-Tails rises, Kaguya Otsutsuki is revived, and Team 7 fights across shifting, impossible dimensions.',
+      beats: [
+        'Team 7 reunites, backed by the reanimated Hokage.',
+        'The Ten-Tails falls — but Madara isn’t finished.',
+        'Might Guy opens all Eight Gates to buy the world time.',
+      ],
+    },
+    {
+      num: 18, title: 'The Final Showdown', boss: 'Sasuke Uchiha', bossHp: 4200, bossDmg: 80, unlockTier: 13,
+      xp: 18000, ryo: 460, mapLocation: 'valley',
+      gearTip: 'The hardest fight in the game. Come in at full strength.',
+      blurb: 'One last fight at the Valley of the End — everything both of you have, until there’s nothing left to throw.',
+      beats: [
+        'The world is saved. Sasuke reveals what he actually plans to do with it.',
+        'You meet him one more time, alone, at the Valley of the End.',
+      ],
+    },
+    {
+      num: 19, title: 'The Moon Crisis & The Wedding', boss: 'Toneri Otsutsuki', bossHp: 3400, bossDmg: 70, unlockTier: 14,
+      xp: 15000, ryo: 400, mapLocation: 'leaf',
+      gearTip: 'Almost there — keep your gear sharp for this last real fight.',
+      blurb: 'Toneri Otsutsuki threatens to drop the moon on the Earth. One punch ends it, and a wedding follows.',
+      beats: [
+        'Toneri kidnaps Hanabi and threatens to pull the moon down.',
+        'The team makes the trip off-world to stop him.',
+        'You finally tell Hinata how you feel.',
+      ],
+    },
+    {
+      num: 20, title: 'The Seventh Hokage', boss: null, bossHp: 0, bossDmg: 0, unlockTier: 13,
+      xp: 25000, ryo: 1000, mapLocation: 'leaf', capstone: true,
+      blurb: 'Years pass. The village is rebuilt, the war is history, and the day finally comes for Nink to be named Hokage.',
+      beats: [
+        'Years pass. Kakashi steps down as Hokage.',
+        'Your daughter accidentally knocks you out cold the morning of the ceremony.',
+        'Konohamaru covers for you at the podium while you come to.',
+      ],
+    },
+  ],
+
+  achievements: [
+    { id: 'streak-7', category: 'Streaks', label: '7-day streak', check: (s) => s.streak.best >= 7 },
+    { id: 'streak-14', category: 'Streaks', label: '14-day streak', check: (s) => s.streak.best >= 14 },
+    { id: 'streak-30', category: 'Streaks', label: '30-day streak', check: (s) => s.streak.best >= 30 },
+    { id: 'streak-60', category: 'Streaks', label: '60-day streak', check: (s) => s.streak.best >= 60 },
+    { id: 'streak-100', category: 'Streaks', label: '100-day streak', check: (s) => s.streak.best >= 100 },
+    { id: 'streak-180', category: 'Streaks', label: '180-day streak', check: (s) => s.streak.best >= 180 },
+    { id: 'streak-365', category: 'Streaks', label: '365-day streak', check: (s) => s.streak.best >= 365 },
+    { id: 'quests-10', category: 'Quests Completed', label: '10 quests completed', check: (s) => s.questsCompletedTotal >= 10 },
+    { id: 'quests-50', category: 'Quests Completed', label: '50 quests completed', check: (s) => s.questsCompletedTotal >= 50 },
+    { id: 'quests-100', category: 'Quests Completed', label: '100 quests completed', check: (s) => s.questsCompletedTotal >= 100 },
+    { id: 'quests-250', category: 'Quests Completed', label: '250 quests completed', check: (s) => s.questsCompletedTotal >= 250 },
+    { id: 'quests-500', category: 'Quests Completed', label: '500 quests completed', check: (s) => s.questsCompletedTotal >= 500 },
+    { id: 'quests-1000', category: 'Quests Completed', label: '1,000 quests completed', check: (s) => s.questsCompletedTotal >= 1000 },
+    { id: 'rank-genin', category: 'Rank Tiers', label: 'Reach Low Genin', check: (s) => s.xp >= 197000 },
+    { id: 'rank-chunin', category: 'Rank Tiers', label: 'Reach Low Chūnin', check: (s) => s.xp >= 1574000 },
+    { id: 'rank-jonin', category: 'Rank Tiers', label: 'Reach Low Jōnin', check: (s) => s.xp >= 5313000 },
+    { id: 'rank-kage', category: 'Rank Tiers', label: 'Reach Low Kage', check: (s) => s.xp >= 12595000 },
+    { id: 'rank-highkage', category: 'Rank Tiers', label: 'Reach High Kage', check: (s) => s.xp >= 20000000 },
+    { id: 'story-1', category: 'Story', label: 'Clear the Academy Graduation', check: (s) => s.story.clearedChapters.includes(1) },
+    { id: 'story-15', category: 'Story', label: 'Clear the War Confrontation', check: (s) => s.story.clearedChapters.includes(15) },
+    { id: 'story-hokage', category: 'Story', label: 'Become Hokage', check: (s) => s.story.hokageAchieved },
+    // Saga arcs: the doc names this category without defining its trigger beyond
+    // "the 4 two-year life-goal arcs" tied to the four life stats — interpreted
+    // here as each stat reaching a high sustained-effort milestone.
+    { id: 'arc-business', category: 'Life-Goal Arcs', label: 'Business Arc: 10,000 stat XP', check: (s) => (s.stats.business || 0) >= 10000 },
+    { id: 'arc-body', category: 'Life-Goal Arcs', label: 'Body Arc: 10,000 stat XP', check: (s) => (s.stats.body || 0) >= 10000 },
+    { id: 'arc-brand', category: 'Life-Goal Arcs', label: 'Brand Arc: 10,000 stat XP', check: (s) => (s.stats.brand || 0) >= 10000 },
+    { id: 'arc-mind', category: 'Life-Goal Arcs', label: 'Mind Arc: 10,000 stat XP', check: (s) => (s.stats.mind || 0) >= 10000 },
+    { id: 'gear-own1', category: 'Gear', label: 'Own 1 item', check: (s) => s.inventory.length >= 1 },
+    { id: 'gear-own5', category: 'Gear', label: 'Own 5 items', check: (s) => s.inventory.length >= 5 },
+    { id: 'gear-own10', category: 'Gear', label: 'Own 10 items', check: (s) => s.inventory.length >= 10 },
+    { id: 'gear-rare', category: 'Gear', label: 'Own a rare-or-better item', check: (s) => s.inventory.some((id) => {
+      const it = ITEMS.find((i) => i.id === id);
+      return it && ['rare', 'epic', 'legendary', 'mythic'].includes(it.rarity);
+    }) },
+    { id: 'gear-legendary', category: 'Gear', label: 'Own a legendary', check: (s) => s.inventory.some((id) => {
+      const it = ITEMS.find((i) => i.id === id);
+      return it && it.rarity === 'legendary';
+    }) },
+    { id: 'gear-fullloadout', category: 'Gear', label: 'Fill all 10 loadout slots', check: (s) => EQUIPMENT_SLOTS.every((slot) => !!s.equipped[slot]) },
+    { id: 'currency-1000', category: 'Currency & Wheel', label: 'Hold 1,000 ₽', check: (s) => s.ryo >= 1000 },
+    { id: 'currency-5000', category: 'Currency & Wheel', label: 'Hold 5,000 ₽', check: (s) => s.ryo >= 5000 },
+    { id: 'wheel-spin1', category: 'Currency & Wheel', label: 'Spin the wheel once', check: (s) => s.wheel.totalSpins >= 1 },
+    { id: 'wheel-spin30', category: 'Currency & Wheel', label: 'Spin the wheel 30 times', check: (s) => s.wheel.totalSpins >= 30 },
+    { id: 'wheel-item', category: 'Currency & Wheel', label: 'Win an item from the wheel', check: (s) => s.wheel.itemsWon.length >= 1 },
+    { id: 'wheel-mythic', category: 'Currency & Wheel', label: 'Win a Mythic artifact', check: (s) => s.wheel.mythicsWon.length >= 1 },
+  ],
+};

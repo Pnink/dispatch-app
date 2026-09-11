@@ -2,15 +2,201 @@
 <html>
   <head>
     <meta charset="utf-8" />
-    <title>Dispatch</title>
+    <title>The Nink Saga</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link href="https://fonts.googleapis.com/css2?family=Yuji+Syuku&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
-    <form id="chat-form">
-      <input id="message-input" type="text" placeholder="Ask Claude..." autofocus />
-    </form>
-    <div id="response"></div>
+    <nav id="tabs">
+      <button class="tab-btn active" data-tab="quests">Daily Quests</button>
+      <button class="tab-btn" data-tab="story">Story Mode</button>
+      <button class="tab-btn" data-tab="character">Character</button>
+      <button class="tab-btn" data-tab="shop">Shop</button>
+      <button class="tab-btn" data-tab="crafting">Crafting</button>
+      <button class="tab-btn" data-tab="map">World Map</button>
+      <button class="tab-btn" data-tab="wheel">Daily Draw</button>
+      <button class="tab-btn" data-tab="people">People</button>
+      <button class="tab-btn" data-tab="jutsu">Jutsu</button>
+      <button class="tab-btn" data-tab="achievements">Achievements</button>
+    </nav>
 
-    <script src="renderer.js"></script>
+    <main id="tab-content">
+      <section id="tab-quests" class="tab-panel active">
+        <header id="app-header">
+          <div id="rank-block">
+            <div id="rank-name">Low Academy Student</div>
+            <div id="xp-bar-track">
+              <div id="xp-bar-fill"></div>
+            </div>
+            <div id="xp-label">0 / 7,000 XP</div>
+          </div>
+          <div id="currency-block">
+            <div id="ryo-display">₽ <span id="ryo-amount">0</span></div>
+            <div id="streak-display">🔥 <span id="streak-amount">0</span>-day streak</div>
+          </div>
+        </header>
+
+        <div id="stats-row">
+          <div class="stat-pill" data-stat="business"><span class="stat-label">Business</span><div class="stat-bar-track"><div class="stat-bar-fill"></div></div></div>
+          <div class="stat-pill" data-stat="body"><span class="stat-label">Body</span><div class="stat-bar-track"><div class="stat-bar-fill"></div></div></div>
+          <div class="stat-pill" data-stat="brand"><span class="stat-label">Brand</span><div class="stat-bar-track"><div class="stat-bar-fill"></div></div></div>
+          <div class="stat-pill" data-stat="mind"><span class="stat-label">Mind</span><div class="stat-bar-track"><div class="stat-bar-fill"></div></div></div>
+        </div>
+
+        <h2 class="section-title">Last 90 Days</h2>
+        <div id="streak-heatmap-wrap">
+          <div id="streak-heatmap"></div>
+          <div id="streak-heatmap-legend">
+            <span>Less</span>
+            <div class="heatmap-cell level-0"></div>
+            <div class="heatmap-cell level-1"></div>
+            <div class="heatmap-cell level-2"></div>
+            <div class="heatmap-cell level-3"></div>
+            <div class="heatmap-cell level-4"></div>
+            <span>More</span>
+          </div>
+        </div>
+
+        <h2 class="section-title">Core Quests</h2>
+        <div id="core-quest-list" class="quest-list"></div>
+        <h2 class="section-title">Today's Quests</h2>
+        <div id="simple-quest-list" class="quest-list"></div>
+        <div id="hard-quest-section" hidden>
+          <h2 class="section-title hard">🔥 Hard Challenge</h2>
+          <div id="hard-quest-list" class="quest-list"></div>
+        </div>
+      </section>
+
+      <section id="tab-story" class="tab-panel">
+        <p id="story-marker-line"></p>
+        <div id="chapter-list"></div>
+      </section>
+
+      <section id="tab-character" class="tab-panel">
+        <div id="character-layout">
+          <div id="avatar-panel">
+            <div id="avatar-svg-wrap"></div>
+            <p class="drag-hint">🖐 Drag to spin Nink around</p>
+            <div class="combat-stats-line" id="combat-stats-line"></div>
+            <h3 class="subsection-title">Hair</h3>
+            <div class="picker-row" id="hair-style-row"></div>
+            <div class="picker-row" id="hair-color-row"></div>
+          </div>
+          <div id="slots-panel">
+            <div id="free-claims-note"></div>
+            <div id="equipment-slots"></div>
+          </div>
+        </div>
+      </section>
+
+      <section id="tab-shop" class="tab-panel">
+        <div id="shop-family-tiles"></div>
+        <div id="shop-item-grid"></div>
+      </section>
+
+      <section id="tab-crafting" class="tab-panel">
+        <p class="chapter-lock-note">Combine 3 owned items of the same family and rarity into 1 random item of the next rarity up.</p>
+        <div id="crafting-list"></div>
+      </section>
+
+      <section id="tab-map" class="tab-panel">
+        <div id="map-3d-wrap"></div>
+        <p class="drag-hint">🖐 Drag to spin the world · tap a marker to jump to it below</p>
+        <p id="map-location-line"></p>
+        <div id="travel-banner" hidden></div>
+        <h2 class="section-title">Villages</h2>
+        <div id="village-list"></div>
+        <h2 class="section-title">Landmarks</h2>
+        <div id="landmark-list"></div>
+      </section>
+
+      <section id="tab-wheel" class="tab-panel">
+        <div id="wheel-arena">
+          <div id="wheel-pointer"></div>
+          <svg id="wheel-svg" viewBox="0 0 240 240"></svg>
+        </div>
+        <button id="spin-btn" class="action-btn wheel-spin-btn">Spin the Wheel</button>
+        <div id="wheel-status"></div>
+        <div id="wheel-result"></div>
+      </section>
+
+      <section id="tab-people" class="tab-panel">
+        <div id="people-list"></div>
+      </section>
+
+      <section id="tab-jutsu" class="tab-panel">
+        <div id="jutsu-list"></div>
+      </section>
+
+      <section id="tab-achievements" class="tab-panel">
+        <div id="achievement-list"></div>
+      </section>
+    </main>
+
+    <div id="battle-modal" class="modal-backdrop" hidden>
+      <div class="modal">
+        <h2 id="battle-boss-name"></h2>
+        <div id="phase-banner" hidden></div>
+        <div class="hp-row">
+          <div class="hp-block">
+            <div class="hp-label">Nink</div>
+            <div class="hp-bar-track"><div id="player-hp-fill" class="hp-bar-fill player"></div></div>
+            <div id="player-hp-text" class="hp-text"></div>
+          </div>
+          <div class="hp-block">
+            <div class="hp-label" id="battle-boss-label"></div>
+            <div class="hp-bar-track"><div id="boss-hp-fill" class="hp-bar-fill boss"></div></div>
+            <div id="boss-hp-text" class="hp-text"></div>
+          </div>
+        </div>
+        <div id="battle-log"></div>
+        <div id="battle-actions">
+          <button id="attack-btn" class="battle-btn primary">Attack</button>
+          <div id="skill-buttons"></div>
+        </div>
+        <button id="battle-close-btn" class="battle-btn secondary" hidden>Close</button>
+
+        <div id="dodge-overlay" hidden>
+          <div id="dodge-label">⚠ Incoming attack — tap to dodge!</div>
+          <div id="dodge-stage">
+            <div id="dodge-target"></div>
+            <div id="dodge-ring"></div>
+          </div>
+          <button id="dodge-btn" class="battle-btn primary">DODGE!</button>
+          <div id="dodge-result"></div>
+        </div>
+
+        <div id="fx-layer"></div>
+        <div id="hit-vignette"></div>
+      </div>
+    </div>
+
+    <div id="picker-modal" class="modal-backdrop" hidden>
+      <div class="modal">
+        <h2 id="picker-title"></h2>
+        <div id="picker-list"></div>
+        <button id="picker-close-btn" class="battle-btn secondary">Close</button>
+      </div>
+    </div>
+
+    <div id="lore-modal" class="modal-backdrop" hidden>
+      <div class="modal">
+        <h2 id="lore-title"></h2>
+        <p id="lore-text"></p>
+        <button id="lore-close-btn" class="battle-btn secondary">Close</button>
+      </div>
+    </div>
+
+    <div id="toast" hidden></div>
+
+    <script type="module" src="three-bootstrap.js"></script>
+    <script src="items.js"></script>
+    <script src="world.js"></script>
+    <script src="people.js"></script>
+    <script src="jutsu.js"></script>
+    <script src="data.js"></script>
+    <script src="three-scenes.js"></script>
+    <script src="app.js"></script>
   </body>
 </html>

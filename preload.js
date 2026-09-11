@@ -1,5 +1,6 @@
 const { contextBridge, ipcRenderer } = require('electron');
 
-contextBridge.exposeInMainWorld('dispatch', {
-  sendMessage: (text) => ipcRenderer.invoke('send-message', text),
+contextBridge.exposeInMainWorld('ninkSaga', {
+  loadState: () => ipcRenderer.invoke('load-state'),
+  saveState: (state) => ipcRenderer.invoke('save-state', state),
 });

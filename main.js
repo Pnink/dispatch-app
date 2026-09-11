@@ -1,18 +1,27 @@
-require('dotenv').config();
-
-const { app, BrowserWindow, globalShortcut, Tray, Menu, ipcMain, nativeImage } = require('electron');
+const { app, BrowserWindow, globalShortcut, Tray, Menu, ipcMain, nativeImage, protocol } = require('electron');
 const path = require('path');
-const Anthropic = require('@anthropic-ai/sdk');
+const fs = require('fs/promises');
 
 const HOTKEY = 'CommandOrControl+Shift+Space';
-const MODEL = 'claude-opus-4-8';
 
 let mainWindow = null;
 let tray = null;
 
-const anthropic = process.env.ANTHROPIC_API_KEY
-  ? new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
-  : null;
+function statePath() {
+  return path.join(app.getPath('userData'), 'nink-saga-state.json');
+}
+
+// A plain file:// load treats the renderer as an opaque/null origin, which
+// silently blocks `<script type="module">` (needed to load Three.js) under
+// Chromium's CORS rules for module scripts. Serving the app over a
+// privileged custom scheme instead makes it a normal same-origin page —
+// this must be registered before the app is ready.
+protocol.registerSchemesAsPrivileged([
+  {
+    scheme: 'app',
+    privileges: { standard: true, secure: true, supportFetchAPI: true, corsEnabled: true, stream: true },
+  },
+]);
 
 function toggleWindow() {
   if (!mainWindow) return;
@@ -26,13 +35,16 @@ function toggleWindow() {
 
 function createWindow() {
   mainWindow = new BrowserWindow({
-    width: 480,
-    height: 420,
+    width: 980,
+    height: 760,
+    minWidth: 640,
+    minHeight: 480,
     alwaysOnTop: true,
     resizable: true,
     minimizable: false,
     fullscreenable: false,
-    title: 'Dispatch',
+    title: 'The Nink Saga — Progress Tracker',
+    backgroundColor: '#0c0f14',
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
@@ -40,7 +52,7 @@ function createWindow() {
     },
   });
 
-  mainWindow.loadFile(path.join(__dirname, 'renderer', 'index.html'));
+  mainWindow.loadURL('app://local/renderer/index.html');
 
   // Keep it around instead of destroying it when closed, so the hotkey
   // and tray icon can bring it back instantly.
@@ -57,11 +69,11 @@ function createTray() {
     'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAKklEQVQ4jWNgGAWjYBSMglEwCkbBKBgFo2AUjIJRMApGwSgYBaNgFAADAAaAAAG5rBQAAAAAAElFTkSuQmCC'
   );
   tray = new Tray(icon);
-  tray.setToolTip('Dispatch — click to toggle, or press ' + HOTKEY);
+  tray.setToolTip('The Nink Saga — click to toggle, or press ' + HOTKEY);
   tray.on('click', toggleWindow);
 
   const menu = Menu.buildFromTemplate([
-    { label: 'Toggle Dispatch', click: toggleWindow },
+    { label: 'Toggle The Nink Saga', click: toggleWindow },
     { type: 'separator' },
     {
       label: 'Quit',
@@ -74,31 +86,52 @@ function createTray() {
   tray.setContextMenu(menu);
 }
 
-ipcMain.handle('send-message', async (_event, text) => {
-  if (!anthropic) {
-    return {
-      error:
-        'No ANTHROPIC_API_KEY found. Copy .env.example to .env and add your key, then restart Dispatch.',
-    };
-  }
-  if (!text || !text.trim()) {
-    return { error: 'Type a message first.' };
-  }
-
+ipcMain.handle('load-state', async () => {
   try {
-    const response = await anthropic.messages.create({
-      model: MODEL,
-      max_tokens: 1024,
-      messages: [{ role: 'user', content: text }],
-    });
-    const textBlock = response.content.find((block) => block.type === 'text');
-    return { reply: textBlock ? textBlock.text : '(no text response)' };
+    const raw = await fs.readFile(statePath(), 'utf8');
+    return JSON.parse(raw);
   } catch (err) {
-    return { error: err.message || 'Something went wrong calling the Anthropic API.' };
+    if (err.code === 'ENOENT') return null;
+    console.error('Failed to load state:', err);
+    return null;
   }
 });
 
+ipcMain.handle('save-state', async (_event, state) => {
+  try {
+    await fs.mkdir(path.dirname(statePath()), { recursive: true });
+    await fs.writeFile(statePath(), JSON.stringify(state, null, 2), 'utf8');
+    return { ok: true };
+  } catch (err) {
+    console.error('Failed to save state:', err);
+    return { ok: false, error: err.message };
+  }
+});
+
+const MIME_TYPES = {
+  '.html': 'text/html',
+  '.js': 'text/javascript',
+  '.mjs': 'text/javascript',
+  '.css': 'text/css',
+  '.json': 'application/json',
+};
+
 app.whenReady().then(() => {
+  protocol.handle('app', async (request) => {
+    const { pathname } = new URL(request.url);
+    const filePath = path.join(__dirname, decodeURIComponent(pathname));
+    // Module scripts strictly enforce Content-Type (unlike classic scripts),
+    // and net.fetch() on a file:// URL doesn't reliably set it — read the
+    // file directly and set the header ourselves.
+    try {
+      const data = await fs.readFile(filePath);
+      const contentType = MIME_TYPES[path.extname(filePath).toLowerCase()] || 'application/octet-stream';
+      return new Response(data, { headers: { 'Content-Type': contentType } });
+    } catch (err) {
+      return new Response('Not found', { status: 404 });
+    }
+  });
+
   createWindow();
   createTray();
 
