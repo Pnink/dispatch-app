@@ -117,6 +117,7 @@
     <div id="battle-modal" class="modal-backdrop" hidden>
       <div class="modal">
         <h2 id="battle-boss-name"></h2>
+        <div id="phase-banner" hidden></div>
         <div class="hp-row">
           <div class="hp-block">
             <div class="hp-label">Nink</div>
@@ -135,6 +136,16 @@
           <div id="skill-buttons"></div>
         </div>
         <button id="battle-close-btn" class="battle-btn secondary" hidden>Close</button>
+
+        <div id="dodge-overlay" hidden>
+          <div id="dodge-label">⚠ Incoming attack — tap to dodge!</div>
+          <div id="dodge-stage">
+            <div id="dodge-target"></div>
+            <div id="dodge-ring"></div>
+          </div>
+          <button id="dodge-btn" class="battle-btn primary">DODGE!</button>
+          <div id="dodge-result"></div>
+        </div>
       </div>
     </div>
 

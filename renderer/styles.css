@@ -485,6 +485,7 @@ h1, h2, .display-font {
   padding: 20px;
   width: 420px;
   max-width: 90vw;
+  position: relative;
 }
 
 .modal h2 {
@@ -492,6 +493,16 @@ h1, h2, .display-font {
   color: var(--gold);
   font-size: 18px;
   text-align: center;
+}
+
+#phase-banner {
+  text-align: center;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--ember);
+  margin: -6px 0 10px;
 }
 
 .hp-row {
@@ -595,6 +606,78 @@ h1, h2, .display-font {
   background: var(--panel-2);
   color: var(--dim);
   cursor: default;
+}
+
+/* Dodge timing mini-game */
+#dodge-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(12, 15, 20, 0.94);
+  border-radius: 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  z-index: 5;
+  padding: 20px;
+}
+
+#dodge-overlay[hidden] {
+  display: none;
+}
+
+#dodge-label {
+  font-size: 13px;
+  color: var(--ember);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  text-align: center;
+}
+
+#dodge-stage {
+  position: relative;
+  width: 170px;
+  height: 170px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+#dodge-target {
+  position: absolute;
+  width: 90px;
+  height: 90px;
+  border-radius: 50%;
+  border: 3px solid var(--gold);
+}
+
+#dodge-ring {
+  position: absolute;
+  width: 170px;
+  height: 170px;
+  border-radius: 50%;
+  border: 4px solid var(--ember);
+}
+
+#dodge-ring.shrinking {
+  animation: dodge-shrink linear forwards;
+}
+
+@keyframes dodge-shrink {
+  from { transform: scale(1); opacity: 1; }
+  to { transform: scale(0.08); opacity: 0.5; }
+}
+
+#dodge-btn {
+  width: 160px;
+}
+
+#dodge-result {
+  font-size: 13px;
+  color: var(--gold);
+  min-height: 18px;
 }
 
 /* Toast */

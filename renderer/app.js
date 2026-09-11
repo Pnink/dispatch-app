@@ -498,6 +498,8 @@ function openBattle(chapter) {
     critChance: stats.critChance,
     bossDmgMultiplier: 1,
     summonBonus: 0,
+    turnCount: 0,
+    pendingSpecial: false,
     activeJutsu,
     jutsuUses,
     over: false,
@@ -512,9 +514,18 @@ function battleLog(msg) {
   battle.log.unshift(msg);
 }
 
+function isBossEnraged() {
+  return battle.bossHp > 0 && battle.bossHp / battle.bossMaxHp <= 0.25;
+}
+
 function renderBattle() {
   document.getElementById('battle-boss-name').textContent = battle.chapter.title;
   document.getElementById('battle-boss-label').textContent = battle.chapter.boss;
+
+  const banner = document.getElementById('phase-banner');
+  const enraged = isBossEnraged();
+  banner.hidden = !enraged || battle.over;
+  if (enraged) banner.textContent = `🔥 ${battle.chapter.boss} is ENRAGED — every attack hits harder!`;
 
   const playerPct = Math.max(0, (battle.playerHp / battle.playerMaxHp) * 100);
   const bossPct = Math.max(0, (battle.bossHp / battle.bossMaxHp) * 100);
@@ -525,29 +536,112 @@ function renderBattle() {
 
   document.getElementById('battle-log').innerHTML = battle.log.map((l) => `<div>${l}</div>`).join('');
 
+  const locked = battle.over || battle.pendingSpecial;
   document.getElementById('skill-buttons').innerHTML = battle.activeJutsu
     .map((j) => {
       const uses = battle.jutsuUses[j.id];
-      return `<button class="skill-btn" data-skill="${j.id}" ${battle.over || uses <= 0 ? 'disabled' : ''}>${j.icon} ${
+      return `<button class="skill-btn" data-skill="${j.id}" ${locked || uses <= 0 ? 'disabled' : ''}>${j.icon} ${
         j.name
       } (${uses} left)</button>`;
     })
     .join('');
 
-  document.getElementById('attack-btn').disabled = battle.over;
+  document.getElementById('attack-btn').disabled = locked;
   document.getElementById('battle-close-btn').hidden = !battle.over;
 }
 
-function bossCounter() {
-  const dmgTaken = Math.max(1, Math.round(battle.chapter.bossDmg * battle.bossDmgMultiplier - battle.shield));
-  battle.playerHp -= dmgTaken;
-  battleLog(`${battle.chapter.boss} hits back for ${dmgTaken}`);
+// 10.2 Boss attack patterns — normal counter-attacks most turns, a
+// telegraphed special every few turns (dodgeable, see showDodgePrompt),
+// and an enraged final phase below 25% HP where every hit lands harder.
+const DODGE_TOTAL_MS = 1300;
+const DODGE_PERFECT_WINDOW = [500, 800];
+const DODGE_GOOD_WINDOW = [250, 1050];
+
+function classifyDodge(elapsedMs) {
+  if (elapsedMs >= DODGE_PERFECT_WINDOW[0] && elapsedMs <= DODGE_PERFECT_WINDOW[1]) return { tier: '✨ Perfect Dodge!', reduction: 1 };
+  if (elapsedMs >= DODGE_GOOD_WINDOW[0] && elapsedMs <= DODGE_GOOD_WINDOW[1]) return { tier: 'Good Dodge', reduction: 0.5 };
+  if (elapsedMs < DODGE_TOTAL_MS) return { tier: 'Late Dodge', reduction: 0.2 };
+  return { tier: 'Missed!', reduction: 0 };
+}
+
+function showDodgePrompt(onResult) {
+  const overlay = document.getElementById('dodge-overlay');
+  const ring = document.getElementById('dodge-ring');
+  const btn = document.getElementById('dodge-btn');
+  const resultEl = document.getElementById('dodge-result');
+
+  resultEl.textContent = '';
+  overlay.hidden = false;
+  ring.classList.remove('shrinking');
+  void ring.offsetWidth; // force reflow so the shrink animation restarts cleanly
+  ring.style.animationDuration = `${DODGE_TOTAL_MS}ms`;
+  ring.classList.add('shrinking');
+
+  const startTs = performance.now();
+  let settled = false;
+  let timeoutId;
+
+  function finish(elapsedMs) {
+    if (settled) return;
+    settled = true;
+    clearTimeout(timeoutId);
+    btn.removeEventListener('click', onTap);
+    const { tier, reduction } = classifyDodge(elapsedMs);
+    resultEl.textContent = tier;
+    setTimeout(() => {
+      overlay.hidden = true;
+      ring.classList.remove('shrinking');
+      onResult(reduction);
+    }, 450);
+  }
+
+  function onTap() {
+    finish(performance.now() - startTs);
+  }
+
+  btn.addEventListener('click', onTap);
+  timeoutId = setTimeout(() => finish(DODGE_TOTAL_MS + 1), DODGE_TOTAL_MS + 50);
+}
+
+function applyBossDamage({ multiplier, enraged, reduction = 0, isSpecial }) {
+  const enrageMult = enraged ? 1.5 : 1;
+  let dmg = Math.round(battle.chapter.bossDmg * battle.bossDmgMultiplier * multiplier * enrageMult - battle.shield);
+  dmg = Math.max(1, dmg);
+  if (isSpecial && reduction > 0) dmg = Math.round(dmg * (1 - reduction));
+  dmg = Math.max(0, dmg);
+  battle.playerHp -= dmg;
+
+  const tag = isSpecial ? `${battle.chapter.boss}'s telegraphed attack` : `${battle.chapter.boss} hits back`;
+  const note = isSpecial && reduction >= 1 ? ' — fully dodged!' : isSpecial && reduction > 0 ? ' — partially dodged' : '';
+  battleLog(`${tag} for ${dmg}${note}`);
+
   if (battle.playerHp <= 0) {
     battle.playerHp = 0;
     battle.over = true;
     battle.won = false;
     battleLog('You were defeated. No losses — try again anytime.');
   }
+}
+
+function resolveBossCounter() {
+  battle.turnCount += 1;
+  const enraged = isBossEnraged();
+  const specialInterval = enraged ? 2 : 3;
+  const isSpecial = battle.turnCount % specialInterval === 0;
+
+  if (!isSpecial) {
+    applyBossDamage({ multiplier: 1, enraged, isSpecial: false });
+    renderBattle();
+    return;
+  }
+
+  battle.pendingSpecial = true;
+  renderBattle();
+  showDodgePrompt((reduction) => {
+    battle.pendingSpecial = false;
+    applyBossDamage({ multiplier: 1.8, enraged, reduction, isSpecial: true });
+    renderBattle();
+  });
 }
 
 function doAttack(multiplier, label) {
@@ -568,8 +662,8 @@ function doAttack(multiplier, label) {
     return;
   }
 
-  bossCounter();
   renderBattle();
+  resolveBossCounter();
 }
 
 // Reaper Death Seal — a huge hit that also costs the player HP as recoil,
@@ -606,8 +700,8 @@ function doHeal(j) {
   const healed = Math.min(battle.playerMaxHp - battle.playerHp, Math.round(battle.playerMaxHp * j.battle.healPercent));
   battle.playerHp += healed;
   battleLog(`${j.name}: healed ${healed} HP`);
-  bossCounter();
   renderBattle();
+  resolveBossCounter();
 }
 
 // Puppet Technique Insight — weakens the boss's damage for the rest of the fight.
@@ -615,8 +709,8 @@ function doDebuff(j) {
   if (!battle || battle.over) return;
   battle.bossDmgMultiplier *= 1 - j.battle.dmgReduction;
   battleLog(`${j.name}: ${battle.chapter.boss}'s attacks weakened`);
-  bossCounter();
   renderBattle();
+  resolveBossCounter();
 }
 
 // Shadow-Possession Tactics — skips the boss's counter-attack this turn.
@@ -631,8 +725,8 @@ function doSummon(j) {
   if (!battle || battle.over) return;
   battle.summonBonus += j.battle.bonusMultiplier;
   battleLog(`${j.name}: a reanimated ally joins the fight`);
-  bossCounter();
   renderBattle();
+  resolveBossCounter();
 }
 
 function useJutsu(jutsuId) {
