@@ -115,105 +115,142 @@ function initAvatar3D() {
   const cloth = '#1c2128';
   const parts = {};
 
+  // A rigged base body: each joint is a real THREE.Bone, parented into a
+  // waist -> chest -> {head, arms -> hands} / waist -> legs -> feet
+  // hierarchy. Body meshes and every piece of equippable gear attach to
+  // these bone "sockets" at a small local offset rather than to raw world
+  // coordinates — the modular equip system the Character tab drives.
+  const rig = {};
+  rig.waist = new THREE.Bone();
+  rig.waist.position.set(0, 0.9, 0);
+  group.add(rig.waist);
+
+  rig.chest = new THREE.Bone();
+  rig.chest.position.set(0, 0.43, 0);
+  rig.waist.add(rig.chest);
+
+  rig.head = new THREE.Bone();
+  rig.head.position.set(0, 0.49, 0);
+  rig.chest.add(rig.head);
+
+  rig.armL = new THREE.Bone();
+  rig.armL.position.set(-0.53, -0.03, 0);
+  rig.chest.add(rig.armL);
+  rig.handL = new THREE.Bone();
+  rig.handL.position.set(0, -0.5, 0);
+  rig.armL.add(rig.handL);
+
+  rig.armR = new THREE.Bone();
+  rig.armR.position.set(0.53, -0.03, 0);
+  rig.chest.add(rig.armR);
+  rig.handR = new THREE.Bone();
+  rig.handR.position.set(0, -0.5, 0);
+  rig.armR.add(rig.handR);
+
+  rig.legL = new THREE.Bone();
+  rig.legL.position.set(-0.2, -0.63, 0);
+  rig.waist.add(rig.legL);
+  rig.footL = new THREE.Bone();
+  rig.footL.position.set(0, -0.51, 0.08);
+  rig.legL.add(rig.footL);
+
+  rig.legR = new THREE.Bone();
+  rig.legR.position.set(0.2, -0.63, 0);
+  rig.waist.add(rig.legR);
+  rig.footR = new THREE.Bone();
+  rig.footR.position.set(0, -0.51, 0.08);
+  rig.legR.add(rig.footR);
+
   // A tapered torso — wider chest, narrower waist — reads far less like a
   // plain block than a single uniform box, while staying in the game's
   // existing primitive-built style.
   parts.head = sphere(0.4, skin);
-  parts.head.position.set(0, 1.82, 0);
-  group.add(parts.head);
+  rig.head.add(parts.head);
 
   parts.collar = new THREE.Mesh(
     new THREE.CylinderGeometry(0.27, 0.31, 0.15, 14),
     new THREE.MeshStandardMaterial({ color: cloth, roughness: 0.85 })
   );
-  parts.collar.position.set(0, 1.56, 0);
-  group.add(parts.collar);
+  parts.collar.position.set(0, 0.23, 0);
+  rig.chest.add(parts.collar);
 
   parts.chest = box(0.72, 0.55, 0.4, '#3a3f4a');
-  parts.chest.position.set(0, 1.33, 0);
-  group.add(parts.chest);
+  rig.chest.add(parts.chest);
 
   parts.waist = box(0.56, 0.4, 0.36, '#3a3f4a');
-  parts.waist.position.set(0, 0.9, 0);
-  group.add(parts.waist);
+  rig.waist.add(parts.waist);
 
   parts.sash = box(0.62, 0.12, 0.44, '#6b2f2f', { roughness: 0.85 });
-  parts.sash.position.set(0, 1.08, 0);
-  group.add(parts.sash);
+  parts.sash.position.set(0, 0.18, 0);
+  rig.waist.add(parts.sash);
 
   parts.armL = box(0.22, 0.8, 0.22, '#3a3f4a');
-  parts.armL.position.set(-0.53, 1.3, 0);
-  group.add(parts.armL);
+  rig.armL.add(parts.armL);
   parts.armR = box(0.22, 0.8, 0.22, '#3a3f4a');
-  parts.armR.position.set(0.53, 1.3, 0);
-  group.add(parts.armR);
+  rig.armR.add(parts.armR);
 
   parts.handL = sphere(0.14, skin);
-  parts.handL.position.set(-0.53, 0.8, 0);
-  group.add(parts.handL);
+  rig.handL.add(parts.handL);
   parts.handR = sphere(0.14, skin);
-  parts.handR.position.set(0.53, 0.8, 0);
-  group.add(parts.handR);
+  rig.handR.add(parts.handR);
 
   parts.legL = box(0.24, 0.85, 0.26, '#2a2f3a');
-  parts.legL.position.set(-0.2, 0.27, 0);
-  group.add(parts.legL);
+  rig.legL.add(parts.legL);
   parts.legR = box(0.24, 0.85, 0.26, '#2a2f3a');
-  parts.legR.position.set(0.2, 0.27, 0);
-  group.add(parts.legR);
+  rig.legR.add(parts.legR);
 
   // A kunai holster pouch strapped to the thigh — a small, static, classic
   // ninja detail independent of equipped gear.
   parts.holster = box(0.16, 0.22, 0.1, '#2a2118', { roughness: 0.85 });
-  parts.holster.position.set(0.24, 0.42, 0.16);
+  parts.holster.position.set(0.04, 0.15, 0.16);
   parts.holster.rotation.z = -0.15;
-  group.add(parts.holster);
+  rig.legR.add(parts.holster);
 
   parts.footL = box(0.28, 0.16, 0.5, '#3a2f28');
-  parts.footL.position.set(-0.2, -0.24, 0.08);
-  group.add(parts.footL);
+  rig.footL.add(parts.footL);
   parts.footR = box(0.28, 0.16, 0.5, '#3a2f28');
-  parts.footR.position.set(0.2, -0.24, 0.08);
-  group.add(parts.footR);
+  rig.footR.add(parts.footR);
 
   parts.headband = box(0.82, 0.14, 0.44, '#2f5fa8');
-  parts.headband.position.set(0, 1.89, 0);
-  group.add(parts.headband);
+  parts.headband.position.set(0, 0.07, 0);
+  rig.head.add(parts.headband);
 
   parts.headbandPlate = box(0.22, 0.16, 0.05, '#c7ccd1', { roughness: 0.3, metalness: 0.6 });
-  parts.headbandPlate.position.set(0, 1.89, 0.22);
-  group.add(parts.headbandPlate);
+  parts.headbandPlate.position.set(0, 0.07, 0.22);
+  rig.head.add(parts.headbandPlate);
 
   // Trailing headband tails down the back of the neck.
   parts.headbandTailL = box(0.1, 0.4, 0.03, '#2f5fa8');
-  parts.headbandTailL.position.set(-0.12, 1.6, -0.24);
+  parts.headbandTailL.position.set(-0.12, -0.22, -0.24);
   parts.headbandTailL.rotation.x = 0.15;
-  group.add(parts.headbandTailL);
+  rig.head.add(parts.headbandTailL);
   parts.headbandTailR = box(0.1, 0.45, 0.03, '#2f5fa8');
-  parts.headbandTailR.position.set(0.1, 1.57, -0.25);
+  parts.headbandTailR.position.set(0.1, -0.25, -0.25);
   parts.headbandTailR.rotation.x = 0.2;
-  group.add(parts.headbandTailR);
+  rig.head.add(parts.headbandTailR);
 
   parts.hat = new THREE.Mesh(new THREE.ConeGeometry(0.48, 0.48, 16), new THREE.MeshStandardMaterial({ color: '#c9a24b', roughness: 0.7 }));
-  parts.hat.position.set(0, 2.4, 0);
-  group.add(parts.hat);
+  parts.hat.position.set(0, 0.58, 0);
+  rig.head.add(parts.hat);
 
+  // The held weapon and wrist accessory ride on the hand socket, so they'd
+  // follow the arm if it were ever posed/animated.
   parts.weapon = box(0.07, 0.68, 0.07, '#9aa0a8', { roughness: 0.25, metalness: 0.65 });
-  parts.weapon.position.set(0.6, 0.9, 0.15);
+  parts.weapon.position.set(0.07, 0.1, 0.15);
   parts.weapon.rotation.z = 0.4;
-  group.add(parts.weapon);
+  rig.handR.add(parts.weapon);
 
   parts.accessory = sphere(0.14, '#4f8fd1');
-  parts.accessory.position.set(0.48, 0.82, 0.15);
-  group.add(parts.accessory);
+  parts.accessory.position.set(-0.05, 0.02, 0.15);
+  rig.handR.add(parts.accessory);
 
   parts.summon = sphere(0.18, '#5fb85f');
-  parts.summon.position.set(0.66, 1.7, -0.1);
-  group.add(parts.summon);
+  parts.summon.position.set(0.66, 0.37, -0.1);
+  rig.chest.add(parts.summon);
 
   parts.hair = box(0.48, 0.2, 0.48, '#1c1410');
-  parts.hair.position.set(0, 2.08, -0.05);
-  group.add(parts.hair);
+  parts.hair.position.set(0, 0.26, -0.05);
+  rig.head.add(parts.hair);
 
   // A soft ground shadow for visual weight — fixed under the character
   // rather than spinning with it.
@@ -227,7 +264,7 @@ function initAvatar3D() {
 
   const drag = makeDragRotate(renderer.domElement, group, { idleSpin: true });
 
-  avatar3D = { renderer, scene, camera, group, parts, drag };
+  avatar3D = { renderer, scene, camera, group, rig, parts, drag };
 
   function tick() {
     requestAnimationFrame(tick);
