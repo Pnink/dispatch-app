@@ -866,6 +866,18 @@ h1, h2, .display-font {
   padding: 6px 8px;
 }
 
+/* Jutsu tab */
+.jutsu-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.jutsu-card .item-icon-wrap {
+  font-size: 20px;
+}
+
 /* World Map */
 #map-3d-wrap {
   background: var(--panel);

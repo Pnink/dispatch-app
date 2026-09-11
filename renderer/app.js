@@ -105,6 +105,7 @@ function defaultState() {
     starterGranted: false,
     world: { location: 'leaf', travelDestination: null, travelArrivalTs: null },
     wheel: { lastSpinDate: null, totalSpins: 0, itemsWon: [], mythicsWon: [], lastResult: null },
+    jutsu: { forbiddenWon: [] },
   };
 }
 
@@ -132,6 +133,7 @@ function normalizeState(loaded) {
     starterGranted: loaded.starterGranted || false,
     world: { ...base.world, ...(loaded.world || {}) },
     wheel: { ...base.wheel, ...(loaded.wheel || {}) },
+    jutsu: { ...base.jutsu, ...(loaded.jutsu || {}) },
   };
 }
 
@@ -185,7 +187,38 @@ function grantStarterKitIfNeeded() {
   persist();
 }
 
-// 4.4 Player combat stats, derived from currently equipped gear.
+// ---------- jutsu (section 12) ----------
+
+function isJutsuUnlocked(j) {
+  if (j.unlock.type === 'chapter') return state.story.clearedChapters.includes(j.unlock.chapter);
+  if (j.unlock.type === 'person') {
+    return j.unlock.persons.some((pid) => {
+      const p = PEOPLE.find((pp) => pp.id === pid);
+      return p && isChapterReached(p.unlockChapter);
+    });
+  }
+  if (j.unlock.type === 'rank') return currentRank(state.xp).tier >= j.unlock.tier;
+  if (j.unlock.type === 'wheel') return state.jutsu.forbiddenWon.includes(j.id);
+  return false;
+}
+
+function getUnlockedJutsu() {
+  return JUTSU.filter(isJutsuUnlocked);
+}
+
+function jutsuUnlockText(j) {
+  if (j.unlock.type === 'chapter') return `Clear Chapter ${j.unlock.chapter}`;
+  if (j.unlock.type === 'person') {
+    const names = j.unlock.persons.map((pid) => (PEOPLE.find((pp) => pp.id === pid) || {}).name || pid);
+    return `Meet ${names.join(' or ')}`;
+  }
+  if (j.unlock.type === 'rank') return `Reach ${NINK_DATA.ranks[j.unlock.tier].name} (Tier ${j.unlock.tier})`;
+  if (j.unlock.type === 'wheel') return 'Ultra-rare Daily Draw reward';
+  return '';
+}
+
+// 4.4 Player combat stats, derived from currently equipped gear plus any
+// unlocked passive jutsu (mentor-taught and rank-unlocked categories).
 function computeCombatStats() {
   let maxHp = 100;
   let shield = 0;
@@ -206,6 +239,22 @@ function computeCombatStats() {
     else if (item.stat.type === 'damage') weaponDamage = item.stat.value;
     else if (item.stat.type === 'assist') assistDamage = item.stat.value;
   });
+
+  let hpPercent = 0;
+  let dmgPercent = 0;
+  getUnlockedJutsu().forEach((j) => {
+    if (!j.passive) return;
+    const { stat, mode, value } = j.passive;
+    if (stat === 'maxHp' && mode === 'percent') hpPercent += value;
+    else if (stat === 'maxHp' && mode === 'flat') maxHp += value;
+    else if (stat === 'weaponDamage' && mode === 'percent') dmgPercent += value;
+    else if (stat === 'weaponDamage' && mode === 'flat') weaponDamage += value;
+    else if (stat === 'shield' && mode === 'flat') shield += value;
+    else if (stat === 'critChance') critChance += value;
+  });
+  maxHp = Math.round(maxHp * (1 + hpPercent));
+  weaponDamage = Math.round(weaponDamage * (1 + dmgPercent));
+
   return { maxHp, shield, weaponDamage, assistDamage, critChance };
 }
 
@@ -434,9 +483,9 @@ function becomeHokage(ch) {
 
 function openBattle(chapter) {
   const stats = computeCombatStats();
-  const unlockedSkills = NINK_DATA.skills.filter((sk) => state.story.clearedChapters.includes(sk.unlocksAfterChapter));
-  const skillUses = {};
-  unlockedSkills.forEach((sk) => (skillUses[sk.id] = sk.usesPerBattle));
+  const activeJutsu = getUnlockedJutsu().filter((j) => j.battle);
+  const jutsuUses = {};
+  activeJutsu.forEach((j) => (jutsuUses[j.id] = j.battle.usesPerBattle));
 
   battle = {
     chapter,
@@ -447,8 +496,10 @@ function openBattle(chapter) {
     baseDamage: stats.weaponDamage + stats.assistDamage,
     shield: stats.shield,
     critChance: stats.critChance,
-    unlockedSkills,
-    skillUses,
+    bossDmgMultiplier: 1,
+    summonBonus: 0,
+    activeJutsu,
+    jutsuUses,
     over: false,
     won: false,
     log: [],
@@ -474,12 +525,12 @@ function renderBattle() {
 
   document.getElementById('battle-log').innerHTML = battle.log.map((l) => `<div>${l}</div>`).join('');
 
-  document.getElementById('skill-buttons').innerHTML = battle.unlockedSkills
-    .map((sk) => {
-      const uses = battle.skillUses[sk.id];
-      return `<button class="skill-btn" data-skill="${sk.id}" ${battle.over || uses <= 0 ? 'disabled' : ''}>${
-        sk.name
-      } ×${sk.multiplier} (${uses} left)</button>`;
+  document.getElementById('skill-buttons').innerHTML = battle.activeJutsu
+    .map((j) => {
+      const uses = battle.jutsuUses[j.id];
+      return `<button class="skill-btn" data-skill="${j.id}" ${battle.over || uses <= 0 ? 'disabled' : ''}>${j.icon} ${
+        j.name
+      } (${uses} left)</button>`;
     })
     .join('');
 
@@ -487,10 +538,23 @@ function renderBattle() {
   document.getElementById('battle-close-btn').hidden = !battle.over;
 }
 
+function bossCounter() {
+  const dmgTaken = Math.max(1, Math.round(battle.chapter.bossDmg * battle.bossDmgMultiplier - battle.shield));
+  battle.playerHp -= dmgTaken;
+  battleLog(`${battle.chapter.boss} hits back for ${dmgTaken}`);
+  if (battle.playerHp <= 0) {
+    battle.playerHp = 0;
+    battle.over = true;
+    battle.won = false;
+    battleLog('You were defeated. No losses — try again anytime.');
+  }
+}
+
 function doAttack(multiplier, label) {
   if (!battle || battle.over) return;
   const crit = Math.random() < battle.critChance;
-  const dmg = Math.round(battle.baseDamage * multiplier * (crit ? 2 : 1));
+  const effMultiplier = multiplier * (1 + battle.summonBonus);
+  const dmg = Math.round(battle.baseDamage * effMultiplier * (crit ? 2 : 1));
   battle.bossHp -= dmg;
   battleLog(`${label}: ${dmg} dmg${crit ? ' (CRIT!)' : ''} to ${battle.chapter.boss}`);
 
@@ -504,16 +568,85 @@ function doAttack(multiplier, label) {
     return;
   }
 
-  const dmgTaken = Math.max(1, battle.chapter.bossDmg - battle.shield);
-  battle.playerHp -= dmgTaken;
-  battleLog(`${battle.chapter.boss} hits back for ${dmgTaken}`);
-  if (battle.playerHp <= 0) {
+  bossCounter();
+  renderBattle();
+}
+
+// Reaper Death Seal — a huge hit that also costs the player HP as recoil,
+// applied every use instead of the boss's normal counter-attack.
+function doNuke(j) {
+  if (!battle || battle.over) return;
+  const crit = Math.random() < battle.critChance;
+  const effMultiplier = j.battle.multiplier * (1 + battle.summonBonus);
+  const dmg = Math.round(battle.baseDamage * effMultiplier * (crit ? 2 : 1));
+  battle.bossHp -= dmg;
+  battleLog(`${j.name}: ${dmg} dmg${crit ? ' (CRIT!)' : ''} to ${battle.chapter.boss}`);
+
+  const recoil = Math.max(1, Math.round(battle.playerHp * j.battle.selfDamagePercent));
+  battle.playerHp -= recoil;
+  battleLog(`${j.name} tears at your own life force — ${recoil} recoil damage`);
+
+  if (battle.bossHp <= 0) {
+    battle.bossHp = 0;
+    battle.over = true;
+    battle.won = true;
+    battleLog(`${battle.chapter.boss} defeated!`);
+    onBattleWon();
+  } else if (battle.playerHp <= 0) {
     battle.playerHp = 0;
     battle.over = true;
     battle.won = false;
-    battleLog('You were defeated. No losses — try again anytime.');
+    battleLog('The recoil finishes you. No losses — try again anytime.');
   }
   renderBattle();
+}
+
+function doHeal(j) {
+  if (!battle || battle.over) return;
+  const healed = Math.min(battle.playerMaxHp - battle.playerHp, Math.round(battle.playerMaxHp * j.battle.healPercent));
+  battle.playerHp += healed;
+  battleLog(`${j.name}: healed ${healed} HP`);
+  bossCounter();
+  renderBattle();
+}
+
+// Puppet Technique Insight — weakens the boss's damage for the rest of the fight.
+function doDebuff(j) {
+  if (!battle || battle.over) return;
+  battle.bossDmgMultiplier *= 1 - j.battle.dmgReduction;
+  battleLog(`${j.name}: ${battle.chapter.boss}'s attacks weakened`);
+  bossCounter();
+  renderBattle();
+}
+
+// Shadow-Possession Tactics — skips the boss's counter-attack this turn.
+function doStun(j) {
+  if (!battle || battle.over) return;
+  battleLog(`${j.name}: ${battle.chapter.boss} is frozen in place — no counter-attack!`);
+  renderBattle();
+}
+
+// Summoning: Edo Tensei — boosts all attack damage for the rest of the fight.
+function doSummon(j) {
+  if (!battle || battle.over) return;
+  battle.summonBonus += j.battle.bonusMultiplier;
+  battleLog(`${j.name}: a reanimated ally joins the fight`);
+  bossCounter();
+  renderBattle();
+}
+
+function useJutsu(jutsuId) {
+  if (!battle || battle.over) return;
+  const j = battle.activeJutsu.find((jj) => jj.id === jutsuId);
+  if (!j || battle.jutsuUses[j.id] <= 0) return;
+  battle.jutsuUses[j.id] -= 1;
+  const kind = j.battle.kind;
+  if (kind === 'attack') doAttack(j.battle.multiplier, j.name);
+  else if (kind === 'nuke') doNuke(j);
+  else if (kind === 'heal') doHeal(j);
+  else if (kind === 'debuff') doDebuff(j);
+  else if (kind === 'stun') doStun(j);
+  else if (kind === 'summon') doSummon(j);
 }
 
 function onBattleWon() {
@@ -941,11 +1074,20 @@ function renderWorldMap() {
   ).join('');
 }
 
+function travelSpeedBonus() {
+  let bonus = 0;
+  getUnlockedJutsu().forEach((j) => {
+    if (j.utility && j.utility.effect === 'travelSpeed') bonus += j.utility.value;
+  });
+  return bonus;
+}
+
 function startTravel(destId) {
   if (state.world.travelDestination || destId === state.world.location) return;
   const days = travelDaysBetween(state.world.location, destId);
+  const ms = days * 24 * 60 * 60 * 1000 * (1 - travelSpeedBonus());
   state.world.travelDestination = destId;
-  state.world.travelArrivalTs = Date.now() + days * 24 * 60 * 60 * 1000;
+  state.world.travelArrivalTs = Date.now() + ms;
   persist();
   renderWorldMap();
   toast(`🧭 Traveling to ${VILLAGES.find((v) => v.id === destId).name} — ${days} day${days === 1 ? '' : 's'}`);
@@ -978,12 +1120,14 @@ function buildWheelSlotsForDay(dateStr) {
   const now = new Date();
   if (WHEEL_BONUS_DAYS.includes(now.getDay())) slots[Math.floor(rand() * WHEEL_SLOT_COUNT)] = { type: 'bonus' };
   if (WHEEL_MYTHIC_DAYS.includes(now.getDate())) slots[Math.floor(rand() * WHEEL_SLOT_COUNT)] = { type: 'mythic' };
+  if (WHEEL_FORBIDDEN_DAYS.includes(now.getDate())) slots[Math.floor(rand() * WHEEL_SLOT_COUNT)] = { type: 'forbidden' };
   return slots;
 }
 
 function slotLabel(slot) {
   if (slot.type === 'bonus') return '🎁';
   if (slot.type === 'mythic') return '✨';
+  if (slot.type === 'forbidden') return '☠️';
   if (slot.type === 'ryo') return `₽${slot.amount}`;
   return `${slot.amount}xp`;
 }
@@ -991,6 +1135,7 @@ function slotLabel(slot) {
 function slotFill(slot, index) {
   if (slot.type === 'bonus') return '#3a6b52';
   if (slot.type === 'mythic') return '#5a2f7a';
+  if (slot.type === 'forbidden') return '#5a1414';
   if (slot.type === 'ryo') return index % 2 === 0 ? '#8a6f3a' : '#6f5a2f';
   return index % 2 === 0 ? '#2f4a6b' : '#375580';
 }
@@ -1056,6 +1201,9 @@ function pickWinningSlotIndex(slots, rand) {
     if (s.type === 'mythic') {
       weights[i] = WHEEL_MYTHIC_CHANCE;
       reserved += WHEEL_MYTHIC_CHANCE;
+    } else if (s.type === 'forbidden') {
+      weights[i] = WHEEL_FORBIDDEN_CHANCE;
+      reserved += WHEEL_FORBIDDEN_CHANCE;
     } else if (s.type === 'bonus') {
       weights[i] = WHEEL_BONUS_CHANCE;
       reserved += WHEEL_BONUS_CHANCE;
@@ -1106,6 +1254,14 @@ function applyWheelSlotResult(slot, rand) {
     state.wheel.mythicsWon.push(item.id);
     state.wheel.lastResult = { label: `✨ Mythic: ${item.name}!` };
     toast(`✨ MYTHIC: ${item.name}!!`);
+  } else if (slot.type === 'forbidden') {
+    const unowned = FORBIDDEN_JUTSU_IDS.filter((id) => !state.jutsu.forbiddenWon.includes(id));
+    const pickFrom = unowned.length ? unowned : FORBIDDEN_JUTSU_IDS;
+    const jutsuId = pickFrom[Math.floor(rand() * pickFrom.length)];
+    const j = JUTSU.find((jj) => jj.id === jutsuId);
+    if (!state.jutsu.forbiddenWon.includes(jutsuId)) state.jutsu.forbiddenWon.push(jutsuId);
+    state.wheel.lastResult = { label: `☠️ Forbidden Jutsu: ${j.name}!` };
+    toast(`☠️ FORBIDDEN JUTSU: ${j.name}!!`);
   }
   renderHeader();
   renderStats();
@@ -1172,6 +1328,53 @@ function renderPeople() {
   }).join('');
 }
 
+// ---------- jutsu tab (section 12) ----------
+
+function jutsuKindLabel(j) {
+  if (j.battle) {
+    const k = j.battle.kind;
+    if (k === 'attack') return `Attack ×${j.battle.multiplier}`;
+    if (k === 'heal') return `Heal ${Math.round(j.battle.healPercent * 100)}% HP`;
+    if (k === 'debuff') return `Debuff −${Math.round(j.battle.dmgReduction * 100)}% boss dmg`;
+    if (k === 'stun') return 'Stun — skip boss attack';
+    if (k === 'nuke') return `Nuke ×${j.battle.multiplier} (costs HP)`;
+    if (k === 'summon') return `Summon +${Math.round(j.battle.bonusMultiplier * 100)}% dmg`;
+  }
+  if (j.passive) {
+    const { stat, mode, value } = j.passive;
+    const pretty = { maxHp: 'Max HP', weaponDamage: 'Weapon Dmg', critChance: 'Crit Chance', shield: 'Shield' }[stat] || stat;
+    return `Passive: +${mode === 'percent' ? Math.round(value * 100) + '%' : value} ${pretty}`;
+  }
+  if (j.utility && j.utility.effect === 'travelSpeed') return `Utility: −${Math.round(j.utility.value * 100)}% travel time`;
+  return '';
+}
+
+function renderJutsu() {
+  document.getElementById('jutsu-list').innerHTML = JUTSU_CATEGORY_ORDER.map((cat) => {
+    const group = JUTSU.filter((j) => j.category === cat);
+    const cards = group
+      .map((j) => {
+        const unlocked = isJutsuUnlocked(j);
+        return `<div class="item-card jutsu-card ${unlocked ? '' : 'locked'}" style="--rarity-color:${JUTSU_CATEGORY_COLORS[cat]}">
+          <div class="item-card-head">
+            <div class="item-icon-wrap">${j.icon}</div>
+            <div>
+              <div class="item-card-name">${unlocked ? j.name : '???'}</div>
+              <div class="item-card-rarity">${JUTSU_CATEGORY_LABELS[cat]}</div>
+            </div>
+          </div>
+          <div class="item-card-meta"><span>${unlocked ? jutsuKindLabel(j) : '🔒 Locked'}</span></div>
+          <div class="item-card-note">${unlocked ? j.desc : jutsuUnlockText(j)}</div>
+        </div>`;
+      })
+      .join('');
+    return `<div>
+      <div class="ach-category-title">${JUTSU_CATEGORY_LABELS[cat]}</div>
+      <div class="jutsu-grid">${cards}</div>
+    </div>`;
+  }).join('');
+}
+
 // ---------- achievements ----------
 
 const ACHIEVEMENT_CATEGORY_ICONS = {
@@ -1231,6 +1434,7 @@ function switchTab(tab) {
   else if (tab === 'map') renderWorldMap();
   else if (tab === 'wheel') renderWheel();
   else if (tab === 'people') renderPeople();
+  else if (tab === 'jutsu') renderJutsu();
   else if (tab === 'achievements') renderAchievements();
 }
 
@@ -1272,11 +1476,7 @@ function wireEvents() {
   document.getElementById('skill-buttons').addEventListener('click', (e) => {
     const btn = e.target.closest('.skill-btn');
     if (!btn || btn.disabled || !battle) return;
-    const skill = battle.unlockedSkills.find((s) => s.id === btn.dataset.skill);
-    if (skill && battle.skillUses[skill.id] > 0) {
-      battle.skillUses[skill.id] -= 1;
-      doAttack(skill.multiplier, skill.name);
-    }
+    useJutsu(btn.dataset.skill);
   });
 
   document.getElementById('tab-character').addEventListener('click', (e) => {

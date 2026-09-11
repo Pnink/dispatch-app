@@ -1,4 +1,4 @@
-// The Nink Saga — People / Characters tab (section 11), 28 characters.
+// The Nink Saga — People / Characters tab (section 11), 29 characters.
 // Each becomes visible once the player reaches `unlockChapter`. `stages` is the
 // chronological status-stage list; `after` on stage i>0 is the chapter number
 // that must be CLEARED for that stage to show (stage 0 has no `after` — it's
@@ -59,6 +59,10 @@ const PEOPLE = [
   { id: 'neji', name: 'Neji Hyuga', unlockChapter: 3, stages: [
     { text: 'A Hyūga genius, boxed in by his clan’s caged-bird fate.' },
     { text: 'Gave his life shielding you on the battlefield.', after: 15 },
+  ] },
+  { id: 'shikamaru', name: 'Shikamaru Nara', unlockChapter: 3, stages: [
+    { text: 'A genius strategist who’d rather be watching clouds — until it counts.' },
+    { text: 'Led the retrieval team after Sasuke, and never forgave himself for losing him.', after: 7 },
   ] },
   { id: 'hiruzen', name: 'Hiruzen Sarutobi', unlockChapter: 3, stages: [
     { text: 'The Third Hokage — kind, but carrying the village’s hardest decisions.' },

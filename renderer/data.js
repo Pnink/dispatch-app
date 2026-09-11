@@ -109,16 +109,8 @@ const NINK_DATA = {
     { id: 'hard-8', title: "Have a real, honest conversation with someone about where you're headed", stat: 'body', xp: 1150, ryo: 50 },
   ],
 
-  // 7 skills — permanently unlocked once the linked chapter is CLEARED.
-  skills: [
-    { id: 'skill-clone', name: 'Multi-Shadow Clone Jutsu', unlocksAfterChapter: 1, multiplier: 2, usesPerBattle: 2 },
-    { id: 'skill-toad', name: 'Toad Summoning', unlocksAfterChapter: 4, multiplier: 2.5, usesPerBattle: 2 },
-    { id: 'skill-rasengan', name: 'Rasengan', unlocksAfterChapter: 6, multiplier: 3, usesPerBattle: 2 },
-    { id: 'skill-rasenshuriken', name: 'Wind Style: Rasenshuriken', unlocksAfterChapter: 10, multiplier: 4, usesPerBattle: 1 },
-    { id: 'skill-sage', name: 'Sage Mode', unlocksAfterChapter: 12, multiplier: 3.5, usesPerBattle: 2 },
-    { id: 'skill-kurama', name: 'Nine-Tails Chakra Mode', unlocksAfterChapter: 14, multiplier: 4.5, usesPerBattle: 2 },
-    { id: 'skill-sixpaths', name: 'Six Paths Sage Mode', unlocksAfterChapter: 18, multiplier: 6, usesPerBattle: 1 },
-  ],
+  // The 7 story-unlocked skills now live in jutsu.js (JUTSU, category: 'story'),
+  // alongside mentor-taught, rank-unlocked, and forbidden jutsu.
 
   // 20 story chapters. beatXp/beatRyo apply per beat (150 XP + 10 Ryō each, per spec).
   beatXp: 150,

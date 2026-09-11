@@ -44,3 +44,9 @@ const WHEEL_BONUS_RARITY_WEIGHTS = { common: 40, uncommon: 25, rare: 15, epic: 1
 // 7.3 Mythic slot — 1st/8th/15th/22nd of the month, 1% combined chance.
 const WHEEL_MYTHIC_DAYS = [1, 8, 15, 22];
 const WHEEL_MYTHIC_CHANCE = 0.01;
+
+// 7.4 Forbidden Jutsu slot — 5th/12th/19th/26th of the month, 0.5% combined
+// chance. Rarer than the mythic-item slot; grants one of the 3 wheel-only
+// Forbidden Jutsu (see jutsu.js, category: 'forbidden').
+const WHEEL_FORBIDDEN_DAYS = [5, 12, 19, 26];
+const WHEEL_FORBIDDEN_CHANCE = 0.005;
