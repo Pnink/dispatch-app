@@ -466,6 +466,77 @@ function scatterDecor(THREE, world, positions) {
   });
 }
 
+// Per-village/landmark weather particles — sandstorm over Sunagakure, rain
+// over Amegakure, snow over the Land of Iron. Cheap THREE.Points systems
+// (100-220 points each) updated with plain array math, no per-frame
+// allocation, so they're safe to run continuously on mobile.
+const WEATHER_KIND_STYLE = {
+  sandstorm: { color: 0xd8b878, size: 0.14, opacity: 0.75, count: 140, radius: 3.2, height: 2.2 },
+  rain: { color: 0x9fd0ea, size: 0.05, opacity: 0.55, count: 220, radius: 2.6, height: 6 },
+  snow: { color: 0xffffff, size: 0.09, opacity: 0.85, count: 130, radius: 2.8, height: 4.5 },
+};
+
+function makeWeatherSystem(THREE, kind, centerX, centerZ, baseY) {
+  const style = WEATHER_KIND_STYLE[kind];
+  const positions = new Float32Array(style.count * 3);
+  const speeds = new Float32Array(style.count);
+  for (let i = 0; i < style.count; i++) {
+    const a = Math.random() * Math.PI * 2;
+    const r = Math.random() * style.radius;
+    positions[i * 3] = centerX + Math.cos(a) * r;
+    positions[i * 3 + 1] = baseY + Math.random() * style.height;
+    positions[i * 3 + 2] = centerZ + Math.sin(a) * r;
+    speeds[i] = 0.4 + Math.random() * 0.6;
+  }
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+  const mat = new THREE.PointsMaterial({
+    color: style.color,
+    size: style.size,
+    transparent: true,
+    opacity: style.opacity,
+    sizeAttenuation: true,
+    depthWrite: false,
+  });
+  const points = new THREE.Points(geo, mat);
+  points.userData = { kind, centerX, centerZ, baseY, radius: style.radius, height: style.height, speeds };
+  return points;
+}
+
+function updateWeatherSystem(points, dt) {
+  const { kind, centerX, centerZ, baseY, radius, height, speeds } = points.userData;
+  const pos = points.geometry.attributes.position.array;
+  const t = performance.now() * 0.001;
+  const count = speeds.length;
+  for (let i = 0; i < count; i++) {
+    const idx = i * 3;
+    if (kind === 'rain') {
+      pos[idx + 1] -= speeds[i] * 9 * dt;
+      if (pos[idx + 1] < baseY) {
+        pos[idx + 1] = baseY + height;
+        pos[idx] = centerX + (Math.random() - 0.5) * radius * 2;
+        pos[idx + 2] = centerZ + (Math.random() - 0.5) * radius * 2;
+      }
+    } else if (kind === 'snow') {
+      pos[idx + 1] -= speeds[i] * 1.1 * dt;
+      pos[idx] += Math.sin(t + i) * 0.004;
+      if (pos[idx + 1] < baseY) {
+        pos[idx + 1] = baseY + height;
+        pos[idx] = centerX + (Math.random() - 0.5) * radius * 2;
+        pos[idx + 2] = centerZ + (Math.random() - 0.5) * radius * 2;
+      }
+    } else if (kind === 'sandstorm') {
+      pos[idx] += speeds[i] * 1.6 * dt;
+      pos[idx + 1] += Math.sin(t * 2 + i) * 0.006;
+      if (pos[idx] - centerX > radius) {
+        pos[idx] = centerX - radius;
+        pos[idx + 2] = centerZ + (Math.random() - 0.5) * radius * 2;
+      }
+    }
+  }
+  points.geometry.attributes.position.needsUpdate = true;
+}
+
 function initWorldMap3D() {
   if (map3D || !window.THREE) return;
   const THREE = window.THREE;
@@ -486,7 +557,8 @@ function initWorldMap3D() {
   renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
   wrap.appendChild(renderer.domElement);
 
-  scene.add(new THREE.AmbientLight(0xffffff, 0.65));
+  const ambient = new THREE.AmbientLight(0xffffff, 0.65);
+  scene.add(ambient);
   const sun = new THREE.DirectionalLight(0xfff2d9, 1.05);
   sun.position.set(-10, 20, 10);
   scene.add(sun);
@@ -523,11 +595,32 @@ function initWorldMap3D() {
   // Landmarks scattered at a seeded angle/radius so placement is stable
   // across sessions without needing real geographic coordinates — each
   // gets its own thematic color rather than one uniform marker tone.
+  let ironPos = null;
   LANDMARKS.forEach((l) => {
     const rand = seededRandom('landmark|' + l.id);
     const angle = rand() * Math.PI * 2;
     const radius = 4 + rand() * 9;
-    addMarker(l.id, 'landmark', Math.cos(angle) * radius, Math.sin(angle) * radius, LANDMARK_MARKER_COLORS[l.id] || '#a06cd5', 1);
+    const lx = Math.cos(angle) * radius;
+    const lz = Math.sin(angle) * radius;
+    addMarker(l.id, 'landmark', lx, lz, LANDMARK_MARKER_COLORS[l.id] || '#a06cd5', 1);
+    if (l.id === 'iron') ironPos = { x: lx, z: lz };
+  });
+
+  // Weather — sandstorm over Sunagakure, rain over Amegakure, snow over
+  // the Land of Iron, each a small THREE.Points system anchored at that
+  // location's terrain height.
+  const weatherSystems = [];
+  const weatherSpots = [
+    { kind: 'sandstorm', pos: positions.sand },
+    { kind: 'rain', pos: positions.rain },
+    { kind: 'snow', pos: ironPos },
+  ];
+  weatherSpots.forEach(({ kind, pos }) => {
+    if (!pos) return;
+    const y = terrainHeightAt(pos.x, pos.z, positions);
+    const system = makeWeatherSystem(THREE, kind, pos.x, pos.z, y);
+    world.add(system);
+    weatherSystems.push(system);
   });
 
   const raycaster = new THREE.Raycaster();
@@ -565,9 +658,31 @@ function initWorldMap3D() {
 
   map3D = { renderer, scene, camera, world, markers, drag };
 
+  // Day/night cycle — ambient + sun brightness and sun color drift with
+  // real wall-clock time (full day at noon, darkest at midnight).
+  const dayColor = new THREE.Color(0xfff2d9);
+  const nightColor = new THREE.Color(0x4a5f8c);
+  const tmpColor = new THREE.Color();
+  function applyDayNight() {
+    const now = new Date();
+    const hour = now.getHours() + now.getMinutes() / 60;
+    const dayFactor = (Math.cos(((hour - 12) / 24) * Math.PI * 2) + 1) / 2;
+    ambient.intensity = 0.22 + dayFactor * 0.43;
+    sun.intensity = 0.15 + dayFactor * 0.9;
+    fill.intensity = 0.15 + dayFactor * 0.15;
+    tmpColor.copy(nightColor).lerp(dayColor, dayFactor);
+    sun.color.copy(tmpColor);
+  }
+
+  let lastTs = performance.now();
   function tick() {
     requestAnimationFrame(tick);
+    const now = performance.now();
+    const dt = Math.min(0.05, (now - lastTs) / 1000);
+    lastTs = now;
     drag.tickIdle();
+    weatherSystems.forEach((system) => updateWeatherSystem(system, dt));
+    applyDayNight();
     renderer.render(scene, camera);
   }
   tick();
