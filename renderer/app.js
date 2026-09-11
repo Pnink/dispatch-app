@@ -96,6 +96,7 @@ function defaultState() {
     questsCompletedTotal: 0,
     streak: { current: 0, best: 0, lastCoreCompleteDate: null },
     daily: { date: todayStr(), completedIds: [] },
+    questHistory: {},
     story: { clearedChapters: [], beatsCleared: {}, hokageAchieved: false },
     achievementsUnlocked: [],
     inventory: [],
@@ -120,6 +121,7 @@ function normalizeState(loaded) {
     questsCompletedTotal: loaded.questsCompletedTotal ?? 0,
     streak: { ...base.streak, ...(loaded.streak || {}) },
     daily: { ...base.daily, ...(loaded.daily || {}) },
+    questHistory: { ...base.questHistory, ...(loaded.questHistory || {}) },
     story: {
       clearedChapters: loaded.story?.clearedChapters || [],
       beatsCleared: loaded.story?.beatsCleared || {},
@@ -318,11 +320,54 @@ function questCardHTML(q, completed, extraClass = '') {
     </div>`;
 }
 
+// GitHub-contribution-style heatmap of the last 90 days, colored by how
+// many daily quests were completed that day (state.questHistory).
+function heatmapLevel(count) {
+  if (!count) return 0;
+  if (count <= 2) return 1;
+  if (count <= 4) return 2;
+  if (count <= 7) return 3;
+  return 4;
+}
+
+function renderStreakHeatmap() {
+  const el = document.getElementById('streak-heatmap');
+  if (!el) return;
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const cells = [];
+  for (let i = 89; i >= 0; i--) {
+    const d = new Date(today);
+    d.setDate(d.getDate() - i);
+    const key = todayStr(d);
+    cells.push({ date: key, count: state.questHistory[key] || 0, dow: d.getDay() });
+  }
+
+  const padded = new Array(cells[0].dow).fill(null).concat(cells);
+  const weeks = [];
+  for (let i = 0; i < padded.length; i += 7) weeks.push(padded.slice(i, i + 7));
+
+  el.innerHTML = `<div class="heatmap-grid">${weeks
+    .map(
+      (week) =>
+        `<div class="heatmap-col">${week
+          .map((c) => {
+            if (!c) return '<div class="heatmap-cell empty"></div>';
+            const level = heatmapLevel(c.count);
+            return `<div class="heatmap-cell level-${level}" title="${c.date}: ${c.count} quest${c.count === 1 ? '' : 's'} completed"></div>`;
+          })
+          .join('')}</div>`
+    )
+    .join('')}</div>`;
+}
+
 function renderQuests() {
   ensureDailyReset();
   const today = state.daily.date;
   const simple = getDailySimpleQuests(today);
   const hard = getDailyHardQuest(today);
+  renderStreakHeatmap();
 
   document.getElementById('core-quest-list').innerHTML = NINK_DATA.coreQuests
     .map((q) => questCardHTML(q, state.daily.completedIds.includes(q.id)))
@@ -352,6 +397,7 @@ function completeQuest(quest) {
   state.stats[quest.stat] = (state.stats[quest.stat] || 0) + quest.xp;
   state.daily.completedIds.push(quest.id);
   state.questsCompletedTotal += 1;
+  state.questHistory[state.daily.date] = (state.questHistory[state.daily.date] || 0) + 1;
   checkCoreStreak();
   persist();
   renderHeader();

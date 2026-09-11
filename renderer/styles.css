@@ -190,6 +190,58 @@ h1, h2, .display-font {
   margin-top: 0;
 }
 
+/* Streak heatmap */
+#streak-heatmap-wrap {
+  margin-bottom: 4px;
+}
+
+#streak-heatmap {
+  overflow-x: auto;
+  padding-bottom: 4px;
+}
+
+.heatmap-grid {
+  display: flex;
+  gap: 3px;
+  width: max-content;
+}
+
+.heatmap-col {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.heatmap-cell {
+  width: 11px;
+  height: 11px;
+  border-radius: 2px;
+  background: var(--panel-2);
+}
+
+.heatmap-cell.empty {
+  background: transparent;
+}
+
+.heatmap-cell.level-0 {
+  background: var(--panel-2);
+  border: 1px solid var(--hairline);
+}
+
+.heatmap-cell.level-1 { background: #234a34; }
+.heatmap-cell.level-2 { background: #2f6b46; }
+.heatmap-cell.level-3 { background: #429166; }
+.heatmap-cell.level-4 { background: var(--jade); }
+
+#streak-heatmap-legend {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 6px;
+  font-size: 10px;
+  color: var(--dim);
+}
+
 /* Quest list */
 .quest-list {
   display: flex;
