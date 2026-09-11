@@ -506,12 +506,64 @@ function openBattle(chapter) {
     won: false,
     log: [],
   };
+  const fxLayer = document.getElementById('fx-layer');
+  if (fxLayer) fxLayer.innerHTML = '';
   renderBattle();
   document.getElementById('battle-modal').hidden = false;
 }
 
 function battleLog(msg) {
   battle.log.unshift(msg);
+}
+
+// 10.3 Combat feedback — transient CSS-driven fx, no persisted state.
+function spawnFx(kind, color) {
+  const layer = document.getElementById('fx-layer');
+  if (!layer) return;
+  const el = document.createElement('div');
+  el.className = kind === 'skill' ? 'fx-burst' : kind === 'boss-slash' ? 'fx-slash boss-hit' : 'fx-slash';
+  if (color) el.style.setProperty('--fx-color', color);
+  layer.appendChild(el);
+  el.addEventListener('animationend', () => el.remove());
+  setTimeout(() => el.remove(), 900);
+}
+
+function shakeModal() {
+  const modal = document.querySelector('#battle-modal .modal');
+  if (!modal) return;
+  modal.classList.remove('shake');
+  void modal.offsetWidth; // restart the animation even if it's still mid-shake
+  modal.classList.add('shake');
+}
+
+function flashHpBlock(which) {
+  const blocks = document.querySelectorAll('#battle-modal .hp-block');
+  const el = which === 'boss' ? blocks[1] : blocks[0];
+  if (!el) return;
+  el.classList.remove('hit-flash');
+  void el.offsetWidth;
+  el.classList.add('hit-flash');
+}
+
+// Player lands a hit — a slash/burst effect plus a flash + shake on the boss's HP.
+function playerAttackFx(isSkill, color) {
+  spawnFx(isSkill ? 'skill' : 'slash', color);
+  flashHpBlock('boss');
+  shakeModal();
+}
+
+// Boss lands a hit — a red slash, a flash on the player's HP, screen shake,
+// and a red vignette flash across the whole modal.
+function playerHitFx() {
+  spawnFx('boss-slash');
+  flashHpBlock('player');
+  shakeModal();
+  const vignette = document.getElementById('hit-vignette');
+  if (vignette) {
+    vignette.classList.remove('flash');
+    void vignette.offsetWidth;
+    vignette.classList.add('flash');
+  }
 }
 
 function isBossEnraged() {
@@ -614,6 +666,7 @@ function applyBossDamage({ multiplier, enraged, reduction = 0, isSpecial }) {
   const tag = isSpecial ? `${battle.chapter.boss}'s telegraphed attack` : `${battle.chapter.boss} hits back`;
   const note = isSpecial && reduction >= 1 ? ' — fully dodged!' : isSpecial && reduction > 0 ? ' — partially dodged' : '';
   battleLog(`${tag} for ${dmg}${note}`);
+  if (dmg > 0) playerHitFx();
 
   if (battle.playerHp <= 0) {
     battle.playerHp = 0;
@@ -644,13 +697,14 @@ function resolveBossCounter() {
   });
 }
 
-function doAttack(multiplier, label) {
+function doAttack(multiplier, label, isSkill = false, fxColor = null) {
   if (!battle || battle.over) return;
   const crit = Math.random() < battle.critChance;
   const effMultiplier = multiplier * (1 + battle.summonBonus);
   const dmg = Math.round(battle.baseDamage * effMultiplier * (crit ? 2 : 1));
   battle.bossHp -= dmg;
   battleLog(`${label}: ${dmg} dmg${crit ? ' (CRIT!)' : ''} to ${battle.chapter.boss}`);
+  playerAttackFx(isSkill, fxColor);
 
   if (battle.bossHp <= 0) {
     battle.bossHp = 0;
@@ -675,10 +729,12 @@ function doNuke(j) {
   const dmg = Math.round(battle.baseDamage * effMultiplier * (crit ? 2 : 1));
   battle.bossHp -= dmg;
   battleLog(`${j.name}: ${dmg} dmg${crit ? ' (CRIT!)' : ''} to ${battle.chapter.boss}`);
+  playerAttackFx(true, JUTSU_CATEGORY_COLORS.forbidden);
 
   const recoil = Math.max(1, Math.round(battle.playerHp * j.battle.selfDamagePercent));
   battle.playerHp -= recoil;
   battleLog(`${j.name} tears at your own life force — ${recoil} recoil damage`);
+  playerHitFx();
 
   if (battle.bossHp <= 0) {
     battle.bossHp = 0;
@@ -735,7 +791,7 @@ function useJutsu(jutsuId) {
   if (!j || battle.jutsuUses[j.id] <= 0) return;
   battle.jutsuUses[j.id] -= 1;
   const kind = j.battle.kind;
-  if (kind === 'attack') doAttack(j.battle.multiplier, j.name);
+  if (kind === 'attack') doAttack(j.battle.multiplier, j.name, true, JUTSU_CATEGORY_COLORS[j.category]);
   else if (kind === 'nuke') doNuke(j);
   else if (kind === 'heal') doHeal(j);
   else if (kind === 'debuff') doDebuff(j);
