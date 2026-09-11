@@ -557,6 +557,155 @@ h1, h2, .display-font {
   100% { transform: translate(-50%, -50%) scale(9); opacity: 0; }
 }
 
+/* Per-jutsu particle effects (5 named story jutsu get a bespoke look;
+   everything else falls back to the plain colored .fx-burst above). */
+.fx-rasengan {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 80px;
+  height: 80px;
+  transform: translate(-50%, -50%);
+}
+
+.fx-rasengan-core {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: radial-gradient(circle, #dff2ff 0%, #4f8fd1 40%, transparent 75%);
+  animation: rasengan-core 0.6s ease-out forwards;
+}
+
+.fx-rasengan-ring {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  border: 3px solid #7fc0f0;
+  opacity: 0.8;
+}
+
+.fx-rasengan-ring.r1 { animation: rasengan-ring 0.6s linear forwards; }
+.fx-rasengan-ring.r2 { animation: rasengan-ring 0.6s linear forwards reverse; border-color: #dff2ff; }
+
+@keyframes rasengan-core {
+  0% { transform: scale(0); opacity: 0; }
+  30% { opacity: 1; }
+  100% { transform: scale(1.6); opacity: 0; }
+}
+
+@keyframes rasengan-ring {
+  0% { transform: rotate(0deg) scale(0.4); opacity: 0.9; }
+  100% { transform: rotate(360deg) scale(1.8); opacity: 0; }
+}
+
+.fx-clone-burst {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0;
+  height: 0;
+}
+
+.fx-clone {
+  position: absolute;
+  font-size: 20px;
+  transform: translate(-50%, -50%) scale(0.3);
+  opacity: 0;
+  animation: clone-pop 0.6s ease-out forwards;
+}
+
+.fx-clone.c1 { --dx: -50px; --dy: -30px; }
+.fx-clone.c2 { --dx: 50px; --dy: -30px; }
+.fx-clone.c3 { --dx: -40px; --dy: 35px; }
+.fx-clone.c4 { --dx: 40px; --dy: 35px; }
+
+@keyframes clone-pop {
+  0% { transform: translate(-50%, -50%) scale(0.3); opacity: 0; }
+  30% { opacity: 1; }
+  100% { transform: translate(calc(-50% + var(--dx)), calc(-50% + var(--dy))) scale(1); opacity: 0; }
+}
+
+.fx-rasenshuriken {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 90px;
+  height: 90px;
+  transform: translate(-50%, -50%) rotate(0deg) scale(0.3);
+  animation: shuriken-spin 0.55s linear forwards;
+}
+
+.fx-rasenshuriken .blade {
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  width: 90px;
+  height: 14px;
+  background: linear-gradient(90deg, transparent, #eafcff, #8fe0ee, transparent);
+  border-radius: 50%;
+}
+
+.fx-rasenshuriken .blade.b2 { transform: rotate(90deg); }
+
+@keyframes shuriken-spin {
+  0% { transform: translate(-50%, -50%) rotate(0deg) scale(0.3); opacity: 0; }
+  25% { opacity: 1; }
+  100% { transform: translate(-50%, -50%) rotate(720deg) scale(1.5); opacity: 0; }
+}
+
+.fx-kurama {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 20px;
+  height: 20px;
+  transform: translate(-50%, -50%);
+}
+
+.fx-kurama .aura {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255, 150, 40, 0.9) 0%, rgba(255, 90, 20, 0.5) 45%, transparent 75%);
+  transform: scale(0.5);
+  opacity: 0.9;
+}
+
+.fx-kurama .a1 { animation: kurama-pulse 0.6s ease-out forwards; }
+.fx-kurama .a2 { animation: kurama-pulse 0.6s ease-out 0.12s forwards; }
+
+@keyframes kurama-pulse {
+  0% { transform: scale(0.5); opacity: 0.9; }
+  100% { transform: scale(6); opacity: 0; }
+}
+
+.fx-sixpaths {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0;
+  height: 0;
+}
+
+.fx-sixpaths .ray {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 4px;
+  height: 70px;
+  background: linear-gradient(180deg, #fff6d8, #dba64c, transparent);
+  transform-origin: top center;
+  transform: translate(-50%, 0) rotate(var(--rot)) scaleY(0);
+  opacity: 0.9;
+  animation: sixpaths-ray 0.6s ease-out forwards;
+}
+
+@keyframes sixpaths-ray {
+  0% { transform: translate(-50%, 0) rotate(var(--rot)) scaleY(0); opacity: 0; }
+  30% { opacity: 1; }
+  100% { transform: translate(-50%, 0) rotate(var(--rot)) scaleY(1); opacity: 0; }
+}
+
 #hit-vignette {
   position: absolute;
   inset: 0;

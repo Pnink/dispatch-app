@@ -517,14 +517,38 @@ function battleLog(msg) {
 }
 
 // 10.3 Combat feedback — transient CSS-driven fx, no persisted state.
+// 5 story jutsu get a bespoke particle look; every other jutsu falls back
+// to the plain category-colored burst.
+const JUTSU_FX_BY_ID = {
+  'skill-clone': 'clone-burst',
+  'skill-rasengan': 'rasengan',
+  'skill-rasenshuriken': 'rasenshuriken',
+  'skill-kurama': 'kurama-aura',
+  'skill-sixpaths': 'sixpaths-rays',
+};
+
+const JUTSU_FX_MARKUP = {
+  rasengan: '<div class="fx-rasengan"><div class="fx-rasengan-core"></div><div class="fx-rasengan-ring r1"></div><div class="fx-rasengan-ring r2"></div></div>',
+  'clone-burst': `<div class="fx-clone-burst">${['c1', 'c2', 'c3', 'c4'].map((c) => `<div class="fx-clone ${c}">🥷</div>`).join('')}</div>`,
+  rasenshuriken: '<div class="fx-rasenshuriken"><div class="blade b1"></div><div class="blade b2"></div></div>',
+  'kurama-aura': '<div class="fx-kurama"><div class="aura a1"></div><div class="aura a2"></div></div>',
+  'sixpaths-rays': `<div class="fx-sixpaths">${Array.from({ length: 8 }, (_, i) => `<div class="ray" style="--rot:${i * 45}deg"></div>`).join('')}</div>`,
+};
+
 function spawnFx(kind, color) {
   const layer = document.getElementById('fx-layer');
   if (!layer) return;
-  const el = document.createElement('div');
-  el.className = kind === 'skill' ? 'fx-burst' : kind === 'boss-slash' ? 'fx-slash boss-hit' : 'fx-slash';
-  if (color) el.style.setProperty('--fx-color', color);
+  let el;
+  if (JUTSU_FX_MARKUP[kind]) {
+    const wrap = document.createElement('div');
+    wrap.innerHTML = JUTSU_FX_MARKUP[kind];
+    el = wrap.firstElementChild;
+  } else {
+    el = document.createElement('div');
+    el.className = kind === 'skill' ? 'fx-burst' : kind === 'boss-slash' ? 'fx-slash boss-hit' : 'fx-slash';
+    if (color) el.style.setProperty('--fx-color', color);
+  }
   layer.appendChild(el);
-  el.addEventListener('animationend', () => el.remove());
   setTimeout(() => el.remove(), 900);
 }
 
@@ -545,9 +569,12 @@ function flashHpBlock(which) {
   el.classList.add('hit-flash');
 }
 
-// Player lands a hit — a slash/burst effect plus a flash + shake on the boss's HP.
-function playerAttackFx(isSkill, color) {
-  spawnFx(isSkill ? 'skill' : 'slash', color);
+// Player lands a hit — a slash/burst/bespoke-jutsu effect plus a flash +
+// shake on the boss's HP. fxKind is null for a plain Attack (-> slash),
+// 'skill' for a generic jutsu (-> colored burst), or one of the bespoke
+// JUTSU_FX_MARKUP keys for the 5 named story jutsu.
+function playerAttackFx(fxKind, color) {
+  spawnFx(fxKind || 'slash', color);
   flashHpBlock('boss');
   shakeModal();
 }
@@ -697,14 +724,14 @@ function resolveBossCounter() {
   });
 }
 
-function doAttack(multiplier, label, isSkill = false, fxColor = null) {
+function doAttack(multiplier, label, fxKind = null, fxColor = null) {
   if (!battle || battle.over) return;
   const crit = Math.random() < battle.critChance;
   const effMultiplier = multiplier * (1 + battle.summonBonus);
   const dmg = Math.round(battle.baseDamage * effMultiplier * (crit ? 2 : 1));
   battle.bossHp -= dmg;
   battleLog(`${label}: ${dmg} dmg${crit ? ' (CRIT!)' : ''} to ${battle.chapter.boss}`);
-  playerAttackFx(isSkill, fxColor);
+  playerAttackFx(fxKind, fxColor);
 
   if (battle.bossHp <= 0) {
     battle.bossHp = 0;
@@ -729,7 +756,7 @@ function doNuke(j) {
   const dmg = Math.round(battle.baseDamage * effMultiplier * (crit ? 2 : 1));
   battle.bossHp -= dmg;
   battleLog(`${j.name}: ${dmg} dmg${crit ? ' (CRIT!)' : ''} to ${battle.chapter.boss}`);
-  playerAttackFx(true, JUTSU_CATEGORY_COLORS.forbidden);
+  playerAttackFx('skill', JUTSU_CATEGORY_COLORS.forbidden);
 
   const recoil = Math.max(1, Math.round(battle.playerHp * j.battle.selfDamagePercent));
   battle.playerHp -= recoil;
@@ -791,7 +818,7 @@ function useJutsu(jutsuId) {
   if (!j || battle.jutsuUses[j.id] <= 0) return;
   battle.jutsuUses[j.id] -= 1;
   const kind = j.battle.kind;
-  if (kind === 'attack') doAttack(j.battle.multiplier, j.name, true, JUTSU_CATEGORY_COLORS[j.category]);
+  if (kind === 'attack') doAttack(j.battle.multiplier, j.name, JUTSU_FX_BY_ID[j.id] || 'skill', JUTSU_CATEGORY_COLORS[j.category]);
   else if (kind === 'nuke') doNuke(j);
   else if (kind === 'heal') doHeal(j);
   else if (kind === 'debuff') doDebuff(j);
