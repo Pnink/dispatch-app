@@ -1551,6 +1551,108 @@ function renderPeople() {
   }).join('');
 }
 
+// ---------- crafting ----------
+// Combine 3 owned, unequipped-or-not items of the same family+rarity into 1
+// random item of the next rarity up in that family. The game only ever
+// grants one copy of any given item id (see grantItem), so "duplicates"
+// here means 3 different items sharing a family and rarity tier — e.g.
+// 3 different common hats become 1 random uncommon hat. Legendary/mythic
+// items are the ceiling and are never craft inputs (mythics are wheel-only
+// by design), so only common/uncommon/rare/epic are combinable.
+const CRAFT_RARITY_ORDER = ['common', 'uncommon', 'rare', 'epic', 'legendary', 'mythic'];
+const CRAFT_INPUT_RARITIES = ['common', 'uncommon', 'rare', 'epic'];
+
+function nextRarity(rarity) {
+  const idx = CRAFT_RARITY_ORDER.indexOf(rarity);
+  return idx >= 0 && idx < CRAFT_RARITY_ORDER.length - 1 ? CRAFT_RARITY_ORDER[idx + 1] : null;
+}
+
+function ownedIdsFor(family, rarity) {
+  return state.inventory.filter((id) => {
+    const it = ITEMS.find((i) => i.id === id);
+    return it && it.family === family && it.rarity === rarity && !it.wheelOnly;
+  });
+}
+
+function getCraftGroups() {
+  const families = [...new Set(ITEMS.map((i) => i.family))];
+  const groups = [];
+  families.forEach((family) => {
+    CRAFT_INPUT_RARITIES.forEach((rarity) => {
+      const ownedIds = ownedIdsFor(family, rarity);
+      if (ownedIds.length > 0) groups.push({ family, rarity, ownedIds, nextRarity: nextRarity(rarity) });
+    });
+  });
+  groups.sort(
+    (a, b) => CRAFT_RARITY_ORDER.indexOf(a.rarity) - CRAFT_RARITY_ORDER.indexOf(b.rarity) || a.family.localeCompare(b.family)
+  );
+  return groups;
+}
+
+function combineItems(family, rarity) {
+  const next = nextRarity(rarity);
+  if (!next) return;
+  const owned = ownedIdsFor(family, rarity);
+  if (owned.length < 3) return;
+  const toConsume = owned.slice(0, 3);
+
+  toConsume.forEach((id) => {
+    state.inventory = state.inventory.filter((invId) => invId !== id);
+    EQUIPMENT_SLOTS.forEach((slot) => {
+      if (state.equipped[slot] === id) state.equipped[slot] = null;
+    });
+  });
+
+  const pool = ITEMS.filter((i) => i.family === family && i.rarity === next && !i.wheelOnly);
+  if (!pool.length) {
+    persist();
+    renderCrafting();
+    return;
+  }
+  const unowned = pool.filter((i) => !state.inventory.includes(i.id));
+  const pickFrom = unowned.length ? unowned : pool;
+  const result = pickFrom[Math.floor(Math.random() * pickFrom.length)];
+  grantItem(result.id);
+
+  persist();
+  toast(`🔨 Combined into ${result.name}!`);
+  renderHeader();
+  renderCrafting();
+  checkAchievements();
+}
+
+function craftCardHTML(group) {
+  const familyLabel = (SHOP_FAMILIES.find((f) => f.family === group.family) || {}).label || group.family;
+  const ready = group.ownedIds.length >= 3;
+  const names = group.ownedIds.map((id) => ITEMS.find((i) => i.id === id).name).join(', ');
+  return `<div class="item-card craft-card ${ready ? '' : 'locked'}" style="--rarity-color:${RARITY_COLORS[group.rarity]}">
+    <div class="item-card-head">
+      <div class="item-icon-wrap">🔨</div>
+      <div>
+        <div class="item-card-name">${familyLabel} — ${group.rarity}</div>
+        <div class="item-card-rarity">${group.ownedIds.length}/3 owned</div>
+      </div>
+    </div>
+    <div class="item-card-note">${names}</div>
+    <div class="item-card-meta"><span>→ random ${group.nextRarity} ${familyLabel.toLowerCase()}</span></div>
+    <div class="item-card-actions">
+      <button class="action-btn" data-combine-family="${group.family}" data-combine-rarity="${group.rarity}" ${ready ? '' : 'disabled'}>
+        ${ready ? 'Combine' : `Need ${3 - group.ownedIds.length} more`}
+      </button>
+    </div>
+  </div>`;
+}
+
+function renderCrafting() {
+  const groups = getCraftGroups();
+  const el = document.getElementById('crafting-list');
+  if (!groups.length) {
+    el.innerHTML = '<p class="chapter-lock-note">Nothing to combine yet — head to the Shop or spin the Daily Draw.</p>';
+    return;
+  }
+  el.innerHTML = `<div class="jutsu-grid">${groups.map(craftCardHTML).join('')}</div>`;
+}
+
 // ---------- jutsu tab (section 12) ----------
 
 function jutsuKindLabel(j) {
@@ -1654,6 +1756,7 @@ function switchTab(tab) {
   else if (tab === 'story') renderStory();
   else if (tab === 'character') renderCharacter();
   else if (tab === 'shop') renderShop();
+  else if (tab === 'crafting') renderCrafting();
   else if (tab === 'map') renderWorldMap();
   else if (tab === 'wheel') renderWheel();
   else if (tab === 'people') renderPeople();
@@ -1761,6 +1864,13 @@ function wireEvents() {
     if (claimBtn && !claimBtn.disabled) {
       const item = ITEMS.find((i) => i.id === claimBtn.dataset.claim);
       if (item) claimFreeItem(item);
+    }
+  });
+
+  document.getElementById('tab-crafting').addEventListener('click', (e) => {
+    const combineBtn = e.target.closest('[data-combine-family]');
+    if (combineBtn && !combineBtn.disabled) {
+      combineItems(combineBtn.dataset.combineFamily, combineBtn.dataset.combineRarity);
     }
   });
 
