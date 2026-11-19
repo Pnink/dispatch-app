@@ -3,7 +3,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { useParams } from "next/navigation";
 import { Check, Minus, Plus } from "lucide-react";
-import { addToCart, updateStore, useStore } from "@/lib/store";
+import { addToCart, updateStore, useShopperStore } from "@/lib/store";
 import { uid } from "@/lib/ai";
 import { money, cx } from "@/lib/format";
 import { ProductArt } from "@/components/ProductArt";
@@ -11,7 +11,7 @@ import { ProductCard, Stars, avgRating, headingFont } from "@/components/storefr
 
 export default function ProductPage() {
   const { slug, id } = useParams<{ slug: string; id: string }>();
-  const store = useStore(slug);
+  const store = useShopperStore(slug);
   const product = store?.products.find((p) => p.id === id);
   const [variant, setVariant] = useState<string | undefined>(product?.variants[0]);
   const [qty, setQty] = useState(1);

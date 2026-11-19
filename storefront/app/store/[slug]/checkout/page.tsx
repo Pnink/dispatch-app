@@ -3,7 +3,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { Lock } from "lucide-react";
-import { cartTotals, placeOrder, useCart, useStore, writeCart } from "@/lib/store";
+import { cartTotals, placeOrder, useCart, useShopperStore, writeCart } from "@/lib/store";
 import type { CardInput } from "@/lib/payments";
 import type { Customer } from "@/lib/types";
 import { money, cx } from "@/lib/format";
@@ -15,7 +15,7 @@ type Method = "card" | "apple" | "google" | "paypal";
 export default function CheckoutPage() {
   const { slug } = useParams<{ slug: string }>();
   const router = useRouter();
-  const store = useStore(slug);
+  const store = useShopperStore(slug);
   const cart = useCart(slug);
   const [c, setC] = useState<Customer>({ name: "", email: "", address: "", city: "", zip: "", country: "US" });
   const [method, setMethod] = useState<Method>("card");

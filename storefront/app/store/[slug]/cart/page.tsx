@@ -2,14 +2,14 @@
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { Minus, Plus, Trash2 } from "lucide-react";
-import { cartTotals, useCart, useStore, writeCart } from "@/lib/store";
+import { cartTotals, useCart, useShopperStore, writeCart } from "@/lib/store";
 import { money, cx } from "@/lib/format";
 import { ProductArt } from "@/components/ProductArt";
 import { headingFont } from "@/components/storefront";
 
 export default function CartPage() {
   const { slug } = useParams<{ slug: string }>();
-  const store = useStore(slug);
+  const store = useShopperStore(slug);
   const cart = useCart(slug);
   if (!store) return null;
   const base = `/store/${store.slug}`;

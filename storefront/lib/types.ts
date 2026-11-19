@@ -91,6 +91,34 @@ export type EmailFlow = {
   body: string;
 };
 
+export type ExperimentKind = "headline" | "price" | "free_shipping" | "popup_offer";
+
+export type VariantId = "a" | "b";
+
+export type Variant = {
+  id: VariantId;
+  /** headline: string; price / free_shipping: cents; popup_offer: percent */
+  value: string | number;
+  views: number;
+  conversions: number;
+  revenueCents: number;
+  simulatedViews: number;
+};
+
+export type Experiment = {
+  id: string;
+  name: string;
+  kind: ExperimentKind;
+  productId?: string;
+  status: "running" | "paused" | "completed";
+  autoPromote: boolean;
+  minSample: number;
+  winner?: VariantId | "none";
+  variants: [Variant, Variant];
+  createdAt: string;
+  endedAt?: string;
+};
+
 export type Store = {
   slug: string;
   name: string;
@@ -111,6 +139,7 @@ export type Store = {
   orders: Order[];
   flows: EmailFlow[];
   loyalty: Record<string, number>;
+  experiments: Experiment[];
   published: boolean;
   createdAt: string;
 };

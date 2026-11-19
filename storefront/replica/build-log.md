@@ -16,9 +16,13 @@
 | S12 Email | 2026-11-19 | done | previews only |
 | S13 Design | 2026-11-19 | done | |
 | S14–S18 Storefront → confirmation | 2026-11-19 | done | |
+| S20 Experiments | 2026-11-19 | done | refunds don't reverse experiment revenue; all visitors in one browser share one id |
 
 Harder than expected: `scrollIntoView` returns a Promise in current Chromium, so an expression-bodied
 `useEffect(() => ref.scrollIntoView(...))` crashed React ("destroy is not a function"). All effects now use block bodies.
 
 Verification: `npm run e2e` (Playwright walkthrough of F01–F04 incl. decline, discount, loyalty, fulfil) passes with 0 console
 errors; no horizontal overflow at 390px on the homepage. Contrast check on tokens: 0 AA failures.
+
+A/B testing: `npm run e2e` also runs `e2e/experiments.cjs` (assistant-started test, validation, preview not counted,
+new visitor counted once, order converts at the variant price, auto-rollout, manual rollout). Passes with 0 console errors.

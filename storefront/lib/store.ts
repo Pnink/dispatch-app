@@ -8,6 +8,7 @@ import { useSyncExternalStore } from "react";
 import { generateStore, refundOrder, uid } from "./ai";
 import type { CartLine, Category, Customer, Order, OrderStatus, Store } from "./types";
 import { chargeCard, type CardInput } from "./payments";
+import { forcedVariants, markSeen, recordConversion, recordExposures, seenExperiments, shopperView, visitorId } from "./experiments";
 
 const KEY = "forgecart:v1";
 const CURRENT = "forgecart:current";
@@ -22,12 +23,17 @@ function read(): DB {
   if (typeof window === "undefined") return { stores: [] };
   try {
     const raw = window.localStorage.getItem(KEY);
-    cache = raw ? (JSON.parse(raw) as DB) : seed();
+    cache = raw ? migrate(JSON.parse(raw) as DB) : seed();
     if (!raw) write(cache);
   } catch {
     cache = seed();
   }
   return cache;
+}
+
+/** Fill in fields added after a store was first saved. */
+function migrate(db: DB): DB {
+  return { stores: db.stores.map((s) => ({ ...s, experiments: s.experiments ?? [] })) };
 }
 
 function write(db: DB) {
@@ -64,6 +70,27 @@ export function useDB(): DB {
 export function useStore(slug: string | undefined): Store | undefined {
   const db = useDB();
   return slug ? db.stores.find((s) => s.slug === slug) : undefined;
+}
+
+/**
+ * The store as the current shopper sees it: running A/B experiments applied for this visitor.
+ * Storefront pages use this; the dashboard uses the raw store.
+ */
+export function useShopperStore(slug: string | undefined): Store | undefined {
+  const store = useStore(slug);
+  return store ? shopperView(store, visitorId()) : undefined;
+}
+
+/** Count this visitor once per running experiment (preview overrides are not counted). */
+export function recordVisit(slug: string) {
+  const store = read().stores.find((s) => s.slug === slug);
+  if (!store) return;
+  const seen = seenExperiments(slug);
+  const forced = forcedVariants();
+  const fresh = store.experiments.filter((e) => e.status === "running" && !seen.includes(e.id) && !forced[e.id]).map((e) => e.id);
+  if (!fresh.length) return;
+  markSeen(slug, fresh);
+  updateStore(slug, (s) => recordExposures(s, visitorId(), fresh));
 }
 
 /** The store the merchant dashboard is looking at. */
@@ -129,8 +156,10 @@ export function cartTotals(store: Store, lines: CartLine[], code?: string) {
 export type PlaceOrderResult = { ok: true; order: Order } | { ok: false; error: string };
 
 export async function placeOrder(slug: string, lines: CartLine[], customer: Customer, card: CardInput, code?: string): Promise<PlaceOrderResult> {
-  const store = read().stores.find((s) => s.slug === slug);
-  if (!store) return { ok: false, error: "Store not found." };
+  const raw = read().stores.find((s) => s.slug === slug);
+  if (!raw) return { ok: false, error: "Store not found." };
+  const visitor = visitorId();
+  const store = shopperView(raw, visitor); // prices/thresholds/codes this shopper was shown
   if (!lines.length) return { ok: false, error: "Your cart is empty." };
   for (const l of lines) {
     const p = store.products.find((x) => x.id === l.productId);
@@ -160,15 +189,21 @@ export async function placeOrder(slug: string, lines: CartLine[], customer: Cust
     pointsEarned: points,
     paymentMethod: charge.label,
   };
-  updateStore(slug, (s) => ({
-    ...s,
-    orders: [order, ...s.orders],
-    products: s.products.map((p) => {
-      const qty = lines.filter((l) => l.productId === p.id).reduce((a, l) => a + l.qty, 0);
-      return qty ? { ...p, stock: p.stock - qty } : p;
-    }),
-    loyalty: points ? { ...s.loyalty, [customer.email.toLowerCase()]: (s.loyalty[customer.email.toLowerCase()] || 0) + points } : s.loyalty,
-  }));
+  const forced = forcedVariants();
+  const exposed = seenExperiments(slug).filter((id) => !forced[id]);
+  updateStore(slug, (prev) => {
+    // conversion first: it may auto-promote a winner (e.g. a new price), which the rest must keep
+    const s = recordConversion(prev, visitor, exposed, t.total);
+    return {
+      ...s,
+      orders: [order, ...s.orders],
+      products: s.products.map((p) => {
+        const qty = lines.filter((l) => l.productId === p.id).reduce((a, l) => a + l.qty, 0);
+        return qty ? { ...p, stock: p.stock - qty } : p;
+      }),
+      loyalty: points ? { ...s.loyalty, [customer.email.toLowerCase()]: (s.loyalty[customer.email.toLowerCase()] || 0) + points } : s.loyalty,
+    };
+  });
   return { ok: true, order };
 }
 

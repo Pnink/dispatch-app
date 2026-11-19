@@ -2,7 +2,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import { Blocks, Bot, ExternalLink, Home, Mail, Package, Palette, Plus, Send, Settings, ShoppingCart, X } from "lucide-react";
+import { Blocks, Bot, ExternalLink, FlaskConical, Home, Mail, Package, Palette, Plus, Send, Settings, ShoppingCart, X } from "lucide-react";
 import { assistant, type AssistantAction } from "@/lib/ai";
 import { setCurrentStore, updateStore, useCurrentStore, useDB } from "@/lib/store";
 import { LogoMark } from "@/components/Logo";
@@ -15,6 +15,7 @@ const NAV = [
   { href: "/dashboard/products", label: "Products", icon: Package },
   { href: "/dashboard/apps", label: "Built-in apps", icon: Blocks },
   { href: "/dashboard/email", label: "Email", icon: Mail },
+  { href: "/dashboard/experiments", label: "Experiments", icon: FlaskConical },
   { href: "/dashboard/design", label: "Design", icon: Palette },
   { href: "/dashboard/settings", label: "Settings", icon: Settings },
 ];

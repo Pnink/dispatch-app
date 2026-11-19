@@ -3,20 +3,32 @@ import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { useParams, usePathname } from "next/navigation";
 import { X } from "lucide-react";
-import { useCart, useStore } from "@/lib/store";
+import { recordVisit, useCart, useShopperStore } from "@/lib/store";
+import { forcedVariants, setForced } from "@/lib/experiments";
+import type { VariantId } from "@/lib/types";
 import type { Store } from "@/lib/types";
 import { StoreFooter, StoreHeader, StoreTheme, headingFont } from "@/components/storefront";
 import { cx } from "@/lib/format";
 
 export default function StoreLayout({ children }: { children: React.ReactNode }) {
   const { slug } = useParams<{ slug: string }>();
-  const store = useStore(slug);
+  const store = useShopperStore(slug);
   const cart = useCart(slug);
   const pathname = usePathname();
   const [mounted, setMounted] = useState(false);
   useEffect(() => {
+    // ?ab=<experimentId>.<a|b> previews a variant for this browser session (not counted in results)
+    const ab = new URLSearchParams(window.location.search).get("ab");
+    if (ab) {
+      const [id, v] = ab.split(".");
+      if (id && (v === "a" || v === "b")) {
+        setForced(id, v as VariantId);
+        sessionStorage.removeItem(`forgecart:popup:${slug}`);
+      }
+    }
+    recordVisit(slug);
     setMounted(true);
-  }, []);
+  }, [slug]);
 
   if (!mounted) return <div className="min-h-dvh" />;
   if (!store)
@@ -55,9 +67,27 @@ export default function StoreLayout({ children }: { children: React.ReactNode })
 }
 
 function OwnerBar() {
+  const previews = Object.entries(forcedVariants());
   return (
-    <div className="flex items-center justify-between gap-2 bg-[#0c0a09] px-4 py-1.5 text-xs text-[#fafaf9]">
-      <span>Demo storefront · pay with 4242 4242 4242 4242</span>
+    <div className="flex flex-wrap items-center justify-between gap-2 bg-[#0c0a09] px-4 py-1.5 text-xs text-[#fafaf9]">
+      <span>
+        Demo storefront · pay with 4242 4242 4242 4242
+        {previews.length > 0 && (
+          <>
+            {" · "}
+            <strong>Previewing variant {previews.map(([, v]) => v.toUpperCase()).join(", ")}</strong> (not counted){" "}
+            <button
+              className="underline"
+              onClick={() => {
+                previews.forEach(([id]) => setForced(id, null));
+                window.location.href = window.location.pathname;
+              }}
+            >
+              Exit preview
+            </button>
+          </>
+        )}
+      </span>
       <Link href="/dashboard" className="underline">Back to dashboard</Link>
     </div>
   );

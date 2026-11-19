@@ -294,6 +294,7 @@ export function generateStore(prompt: string, forced?: Category, existingSlugs: 
     orders: [],
     flows: defaultFlows(name),
     loyalty: {},
+    experiments: [],
     published: false,
     createdAt: new Date().toISOString(),
   };
@@ -350,6 +351,42 @@ export function assistant(input: string, store: Store, page: string): AssistantR
   const revenue = paidOrders.reduce((a, o) => a + o.totalCents, 0);
 
   const pct = Number((q.match(/(\d{1,2})\s*%/) || [])[1] || 15);
+
+  if (/(a\/b|\bab test|split test|experiment|\btest (a|the|my|our|new|another)\b)/.test(q)) {
+    const running = (store.experiments ?? []).filter((e) => e.status === "running");
+    const options = suggestHeadlines(store);
+    const alt = options[hash(q) % Math.max(1, options.length)];
+    if (running.some((e) => e.kind === "headline") || !alt) {
+      return {
+        text: `You have ${running.length} experiment${running.length === 1 ? "" : "s"} running. Open **Experiments** in the sidebar to see results, or start a price, free-shipping or popup test there.`,
+      };
+    }
+    return {
+      text: `I'd start with the homepage headline — every visitor sees it. Test **"${store.heroHeadline}"** (A) against **"${alt}"** (B), split 50/50. I'll roll out the winner once I'm 95% sure.`,
+      action: {
+        label: "Start headline test",
+        apply: (s) => ({
+          ...s,
+          experiments: [
+            {
+              id: uid(),
+              name: "Homepage headline",
+              kind: "headline",
+              status: "running",
+              autoPromote: true,
+              minSample: 100,
+              variants: [
+                { id: "a", value: s.heroHeadline, views: 0, conversions: 0, revenueCents: 0, simulatedViews: 0 },
+                { id: "b", value: alt, views: 0, conversions: 0, revenueCents: 0, simulatedViews: 0 },
+              ],
+              createdAt: new Date().toISOString(),
+            },
+            ...(s.experiments ?? []),
+          ],
+        }),
+      },
+    };
+  }
 
   if (/(discount|promo|coupon|sale|code)/.test(q)) {
     const code = `SAVE${pct}`;
@@ -461,8 +498,18 @@ export function assistant(input: string, store: Store, page: string): AssistantR
     };
   }
   return {
-    text: `I'm your store assistant (demo). On the ${page} page I can help with things like:\n• "How are sales going?"\n• "Create a 20% discount"\n• "Add a product called Travel Mug"\n• "Make the accent green" or "Go darker"\n• "What's low on stock?"\n• "Refund order #1002"\n• "Write SEO titles"`,
+    text: `I'm your store assistant (demo). On the ${page} page I can help with things like:\n• "How are sales going?"\n• "Create a 20% discount"\n• "Add a product called Travel Mug"\n• "Make the accent green" or "Go darker"\n• "What's low on stock?"\n• "Refund order #1002"\n• "Write SEO titles"\n• "Run an A/B test"`,
   };
+}
+
+/** Alternative homepage headlines for an A/B test. */
+export function suggestHeadlines(store: Store): string[] {
+  const extra = [
+    `${store.products[0]?.title ?? "Our best-seller"}, made to last`,
+    `Free shipping over $${Math.round(store.freeShippingCents / 100)}. Shop ${store.name}.`,
+    "Small batch. Big care. Shipped this week.",
+  ];
+  return [...TEMPLATES[store.category].heroes, ...extra].filter((h) => h !== store.heroHeadline);
 }
 
 function titleCase(s: string) {
