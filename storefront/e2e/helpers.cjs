@@ -22,7 +22,7 @@ async function waitSaved(page) {
 
 /** Create and publish a store through the real UI. Returns its slug. */
 async function createStore(page, prompt, category) {
-  const q = new URLSearchParams({ prompt });
+  const q = new URLSearchParams({ prompt, review: "1" });
   if (category) q.set("category", category);
   const before = new Set((await adminDbFrom(page)).stores.map((s) => s.slug));
   await page.goto(`${B}/create?${q}`);
@@ -60,4 +60,13 @@ async function checkout(page, slug, { email = "shopper@test.dev", card = "4242 4
   await page.getByRole("button", { name: /^Pay/ }).click();
 }
 
-module.exports = { B, ok, assert, adminDb, storeBySlug, waitSaved, createStore, collectErrors, checkout };
+/** Make a real PNG "product photo" (a coloured object on a light background) for upload tests. */
+async function makePhoto(browser, color, file) {
+  const p = await browser.newPage({ viewport: { width: 600, height: 600 } });
+  await p.setContent(`<body style="margin:0;background:#f4f1ea;display:grid;place-items:center;height:100vh"><div style="width:300px;height:380px;border-radius:40px;background:${color}"></div></body>`);
+  await p.screenshot({ path: file });
+  await p.close();
+  return file;
+}
+
+module.exports = { B, ok, assert, adminDb, storeBySlug, waitSaved, createStore, collectErrors, checkout, makePhoto };

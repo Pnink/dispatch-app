@@ -152,7 +152,7 @@ export default function CheckoutPage() {
             return (
               <li key={`${l.productId}-${l.variant}`} className="flex items-center gap-3 text-sm">
                 <div className="relative">
-                  <ProductArt seed={p.art} title={p.title} category={store.category} accent={store.palette.accent} soft={store.palette.bg} className="h-14 w-14 rounded-md" />
+                  <ProductArt image={p.image} seed={p.art} title={p.title} category={store.category} accent={store.palette.accent} soft={store.palette.bg} className="h-14 w-14 rounded-md" />
                   <span className="absolute -right-1.5 -top-1.5 grid h-5 w-5 place-items-center rounded-full bg-[var(--s-text)] text-[10px] text-[var(--s-bg)]">{l.qty}</span>
                 </div>
                 <div className="flex-1"><div>{p.title}</div>{l.variant && <div className="text-xs opacity-60">{l.variant}</div>}</div>

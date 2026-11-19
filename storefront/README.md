@@ -20,6 +20,23 @@ npm run dev
 
 Open http://localhost:3100/dashboard. The first time, it asks you to create your first store; there is no sample data.
 
+## Build a store from photos
+
+Go to **New store**, drop in photos of your products (one per product, up to 8) and, if you like, a few lines of notes. For example:
+
+```
+Juniper Candle Co — hand-poured soy candles
+Lavender candle 8oz - $24
+Cedar candle 12oz - $32
+```
+
+Then click **Build my store**. It uploads the photos and builds the whole store: name, colours taken from your photos, one product page per photo, homepage, story, FAQs and checkout. With "Put it live as soon as it's ready" ticked (the default), it publishes straight away.
+
+- **With an AI model** (Settings → AI model), the model looks at each photo and writes the names, descriptions, prices, options, story and FAQs. Anything you put in the notes (names, prices, sizes) is used exactly.
+- **With the free builder,** names and prices come from your notes lines and the photo file names, and descriptions stay minimal for you to fill in.
+- **Photos are shrunk to 1600px** in your browser before upload, which also strips the hidden location data phones add. They're stored in `data/uploads`. Only JPG, PNG, WebP and GIF files are accepted.
+- **No invented reviews or fake "was" prices** are ever generated: on a real store those are illegal in the US and many other countries.
+
 ## Saving
 
 **Every change saves automatically** within a moment of making it. The header shows `Saved · 2:41 PM`, and **⌘S / Ctrl+S** saves instantly. Saved data lives in `storefront/data/`:

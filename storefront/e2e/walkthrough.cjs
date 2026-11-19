@@ -35,10 +35,9 @@ const OUT = process.argv[2];
   await page.waitForURL(/\/create/);
   await page.waitForTimeout(1500);
   await shot("S06-generating", false);
-  await page.getByText("Your store is ready to review").waitFor({ timeout: 20000 });
-  await shot("S07-review", false);
-  await page.getByRole("button", { name: /Publish & open dashboard/ }).click();
-  await page.waitForURL(/\/dashboard/);
+  // "put it live as soon as it's ready" is on by default: no review step, straight to the dashboard
+  await page.waitForURL(/\/dashboard\?welcome=1/, { timeout: 25000 });
+  await page.getByText(/is live\./).waitFor();
   await waitSaved(page);
   await shot("S08-dashboard", false);
   const slug = await page.evaluate(async () => (await (await fetch("/api/admin/db")).json()).stores[0].slug);

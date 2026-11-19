@@ -7,6 +7,7 @@ import type { Product, Store } from "@/lib/types";
 import { money } from "@/lib/format";
 import { PageHeader, Panel } from "@/components/dashboard/PageHeader";
 import { ProductArt } from "@/components/ProductArt";
+import { preparePhoto, uploadPhoto } from "@/lib/media-client";
 import { Badge, Button, Field } from "@/components/ui";
 
 export default function ProductsPage() {
@@ -46,7 +47,7 @@ export default function ProductsPage() {
                   <tr key={p.id} className="border-t border-border">
                     <td className="px-5 py-3">
                       <div className="flex items-center gap-3">
-                        <ProductArt seed={p.art} title={p.title} category={store.category} accent={store.palette.accent} soft={store.palette.soft} className="h-10 w-10 shrink-0 rounded-md" />
+                        <ProductArt image={p.image} seed={p.art} title={p.title} category={store.category} accent={store.palette.accent} soft={store.palette.soft} className="h-10 w-10 shrink-0 rounded-md" />
                         <span className="font-medium">{p.title}</span>
                       </div>
                     </td>
@@ -144,6 +145,7 @@ function Editor({ store, initial, onClose }: { store: Store; initial: Product; o
             <label htmlFor="desc" className="mb-1 block text-sm font-medium">Description</label>
             <textarea id="desc" rows={4} value={p.description} onChange={(e) => setP({ ...p, description: e.target.value })} className="w-full rounded-md border border-border-input/60 p-3 text-sm outline-none focus:border-accent" />
           </div>
+          <PhotoField store={store} product={p} onChange={(image) => setP({ ...p, image })} />
           <div className="grid grid-cols-2 gap-4">
             <Field label="Price (USD)" name="price" inputMode="decimal" value={price} onChange={(e) => setPrice(e.target.value)} error={errors.price} />
             <Field label="Stock" name="stock" type="number" min={0} value={String(p.stock)} onChange={(e) => setP({ ...p, stock: Number(e.target.value) })} error={errors.stock} />
@@ -160,6 +162,46 @@ function Editor({ store, initial, onClose }: { store: Store; initial: Product; o
           <Button onClick={save}>{isNew ? "Add product" : "Save changes"}</Button>
         </div>
       </div>
+    </div>
+  );
+}
+
+function PhotoField({ store, product, onChange }: { store: Store; product: Product; onChange: (image: string | undefined) => void }) {
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState("");
+  return (
+    <div>
+      <span className="mb-1 block text-sm font-medium">Photo</span>
+      <div className="flex items-center gap-3">
+        <ProductArt image={product.image} seed={product.art} title={product.title || "Product"} category={store.category} accent={store.palette.accent} soft={store.palette.soft} className="h-16 w-16 rounded-md" />
+        <label className="cursor-pointer rounded-md border border-border px-3 py-1.5 text-sm hover:bg-surface">
+          {busy ? "Uploading…" : product.image ? "Replace photo" : "Upload photo"}
+          <input
+            type="file"
+            accept="image/*"
+            className="sr-only"
+            aria-label="Product photo"
+            disabled={busy}
+            onChange={async (e) => {
+              const f = e.target.files?.[0];
+              e.target.value = "";
+              if (!f) return;
+              setBusy(true);
+              setErr("");
+              try {
+                onChange(await uploadPhoto((await preparePhoto(f)).blob));
+              } catch (x) {
+                setErr((x as Error).message);
+              }
+              setBusy(false);
+            }}
+          />
+        </label>
+        {product.image && (
+          <button type="button" onClick={() => onChange(undefined)} className="text-sm text-muted hover:text-danger">Remove</button>
+        )}
+      </div>
+      {err && <p className="mt-1 text-xs text-danger">{err}</p>}
     </div>
   );
 }

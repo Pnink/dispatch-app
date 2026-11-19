@@ -31,7 +31,7 @@ const OUT = process.argv[2];
   ok("keys configured on the server, never sent to the browser");
 
   // need a store to open the dashboard: create one with the built-in generator first
-  const q = new URLSearchParams({ prompt: "Small-batch coffee roaster with a warm, cosy feel", category: "coffee" });
+  const q = new URLSearchParams({ prompt: "Small-batch coffee roaster with a warm, cosy feel", category: "coffee", review: "1" });
   await page.goto(`${B}/create?${q}`);
   await page.getByText("Your store is ready to review").waitFor({ timeout: 20000 });
   assert(!(await page.locator("[data-ai-note]").count()), "built-in generation shows no AI note");
@@ -71,7 +71,7 @@ const OUT = process.argv[2];
   ok("switching to GPT-6 Astra routes the assistant to OpenAI");
 
   // 4. store generation is written by the chosen model
-  await page.goto(`${B}/create?${new URLSearchParams({ prompt: "Cheerful stationery shop for students" })}`);
+  await page.goto(`${B}/create?${new URLSearchParams({ prompt: "Cheerful stationery shop for students", review: "1" })}`);
   await page.getByText("Your store is ready to review").waitFor({ timeout: 20000 });
   await page.getByText("Written by GPT-6 Astra").waitFor();
   await page.getByText("Model-made Mug").first().waitFor();

@@ -79,7 +79,7 @@ export function ProductCard({ store, product, base }: { store: Store; product: P
   return (
     <Link href={`${base}/p/${product.id}`} className="group block">
       <div className="overflow-hidden rounded-lg">
-        <ProductArt seed={product.art} title={product.title} category={store.category} accent={store.palette.accent} soft={store.palette.soft} className="aspect-[4/5] w-full transition-transform duration-300 group-hover:scale-[1.03]" />
+        <ProductArt image={product.image} seed={product.art} title={product.title} category={store.category} accent={store.palette.accent} soft={store.palette.soft} className="aspect-[4/5] w-full transition-transform duration-300 group-hover:scale-[1.03]" />
       </div>
       <div className="mt-3 flex items-start justify-between gap-3">
         <div>
@@ -132,7 +132,7 @@ function Hero({ store, base }: { store: Store; base: string }) {
           </Link>
         </div>
         {featured && (
-          <ProductArt seed={featured.art + 7} title={featured.title} category={store.category} accent={store.palette.accent} soft={store.palette.bg} className="aspect-square w-full rounded-2xl" />
+          <ProductArt image={featured.image} seed={featured.art + 7} title={featured.title} category={store.category} accent={store.palette.accent} soft={store.palette.bg} className="aspect-square w-full rounded-2xl" />
         )}
       </div>
     </section>
@@ -161,7 +161,7 @@ function Trust({ store }: { store: Store }) {
       <div className="mx-auto grid max-w-6xl gap-6 px-4 py-10 text-sm sm:grid-cols-3 sm:px-6">
         <div className="flex items-center gap-3"><Truck className="h-5 w-5 opacity-70" aria-hidden /> {store.freeShippingCents > 0 ? `Free shipping over ${money(store.freeShippingCents)}` : "Fast, tracked shipping"}</div>
         <div className="flex items-center gap-3"><RotateCcw className="h-5 w-5 opacity-70" aria-hidden /> 30-day easy returns</div>
-        <div className="flex items-center gap-3"><Star className="h-5 w-5 opacity-70" aria-hidden /> Loved by our customers</div>
+        <div className="flex items-center gap-3"><Star className="h-5 w-5 opacity-70" aria-hidden /> Secure checkout</div>
       </div>
     </section>
   );
@@ -171,7 +171,7 @@ function StorySection({ store }: { store: Store }) {
   const p = store.products[1] ?? store.products[0];
   return (
     <section id="story" className="mx-auto grid max-w-6xl scroll-mt-4 items-center gap-10 px-4 py-16 sm:px-6 md:grid-cols-[1fr_1.2fr]">
-      {p && <ProductArt seed={p.art + 31} title={`${store.name} workshop`} category={store.category} accent={store.palette.accent} soft={store.palette.soft} className="aspect-[4/3] w-full rounded-2xl" />}
+      {p && <ProductArt image={p.image} seed={p.art + 31} title={p.image ? p.title : `${store.name} workshop`} category={store.category} accent={store.palette.accent} soft={store.palette.soft} className="aspect-[4/3] w-full rounded-2xl" />}
       <div>
         <h2 className={cx("text-3xl", headingFont(store))}>{store.story.title}</h2>
         <p className="mt-4 whitespace-pre-line leading-relaxed opacity-80">{store.story.body}</p>

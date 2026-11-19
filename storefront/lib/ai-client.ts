@@ -13,20 +13,26 @@ export type AiSettings = {
 };
 
 let settings: AiSettings | null = null;
-let loading = false;
+let inFlight: Promise<void> | null = null;
 const listeners = new Set<() => void>();
 const emit = () => listeners.forEach((l) => l());
 
-async function load(force = false) {
-  if ((settings && !force) || loading) return;
-  loading = true;
-  try {
-    const r = await fetch("/api/admin/ai", { cache: "no-store" });
-    if (r.ok) settings = await r.json();
-  } finally {
-    loading = false;
-    emit();
-  }
+/** Load once; callers that arrive while it's loading wait for the same request. */
+function load(force = false): Promise<void> {
+  if (settings && !force) return Promise.resolve();
+  if (inFlight) return inFlight;
+  inFlight = (async () => {
+    try {
+      const r = await fetch("/api/admin/ai", { cache: "no-store" });
+      if (r.ok) settings = await r.json();
+    } catch {
+      /* stays null: callers fall back to the built-in rules */
+    } finally {
+      inFlight = null;
+      emit();
+    }
+  })();
+  return inFlight;
 }
 
 export function useAiSettings(): AiSettings | null {
@@ -77,7 +83,7 @@ export function askAssistant(store: Store, page: string, history: { role: "user"
   return post<AssistantReplyJson>({ task: "assistant", store: storeContext(store), page, history });
 }
 
-export async function generateWithAi(prompt: string, category?: string) {
-  const r = await post<{ store: GeneratedJson }>({ task: "generate", prompt, category });
+export async function generateWithAi(prompt: string, category?: string, images: string[] = []) {
+  const r = await post<{ store: GeneratedJson }>({ task: "generate", prompt, category, images });
   return r.ok ? { ok: true as const, label: r.label, store: r.data.store } : r;
 }

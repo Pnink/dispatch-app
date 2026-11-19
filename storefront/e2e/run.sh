@@ -28,7 +28,7 @@ start 3100 "$DATA_DIR" ""
 start 3101 "$PW_DATA" "$OWNER_PASSWORD"
 AI_FAKE=1 ANTHROPIC_API_KEY=sk-test-anthropic OPENAI_API_KEY=sk-test-openai start 3102 "$WORK/data-ai" ""
 
-for suite in walkthrough experiments owner-tools security ai; do
+for suite in walkthrough experiments owner-tools security ai photos; do
   echo "== $suite"
   BASE_URL=http://localhost:3100 BASE_URL_PW=http://localhost:3101 BASE_URL_AI=http://localhost:3102 node "e2e/$suite.cjs" "$SHOTS"
 done

@@ -60,15 +60,21 @@ export const GENERATE_SCHEMA = {
           description: { type: "string" },
           priceDollars: { type: "number" },
           variants: { type: "array", items: { type: "string" } },
+          photoIndex: { ...nullable("integer"), description: "Which uploaded photo (0-based) shows this product, or null." },
         },
-        required: ["title", "description", "priceDollars", "variants"],
+        required: ["title", "description", "priceDollars", "variants", "photoIndex"],
         additionalProperties: false,
       },
     },
     storyTitle: { type: "string" },
     storyBody: { type: "string" },
+    announcement: { type: "string", description: "One short line for the top bar, e.g. a shipping promise." },
+    faqs: {
+      type: "array",
+      items: { type: "object", properties: { q: { type: "string" }, a: { type: "string" } }, required: ["q", "a"], additionalProperties: false },
+    },
   },
-  required: ["name", "tagline", "heroHeadline", "heroSub", "accentHex", "products", "storyTitle", "storyBody"],
+  required: ["name", "tagline", "heroHeadline", "heroSub", "accentHex", "products", "storyTitle", "storyBody", "announcement", "faqs"],
   additionalProperties: false,
 } as const;
 
@@ -91,9 +97,11 @@ export type GeneratedJson = {
   heroHeadline: string;
   heroSub: string;
   accentHex: string;
-  products: { title: string; description: string; priceDollars: number; variants: string[] }[];
+  products: { title: string; description: string; priceDollars: number; variants: string[]; photoIndex: number | null }[];
   storyTitle: string;
   storyBody: string;
+  announcement: string;
+  faqs: { q: string; a: string }[];
 };
 
 /** What the model is told about the store. No customer names, emails or addresses are sent. */
@@ -131,10 +139,17 @@ Actions:
 - start_headline_test: text (headline B for an A/B test against the current headline).
 Never invent orders, products or numbers that aren't in the data. If asked for something you can't do with these actions, say so.`;
 
-export const GENERATE_SYSTEM = `You design small online stores. From the owner's one-line brief, return a brand name (2-3 words, not an existing famous brand),
-a short tagline, a homepage headline (under 50 characters) and subheading, an accent colour (#rrggbb dark enough for white text),
-3 or 4 realistic products with honest 1-2 sentence descriptions, sensible US-dollar prices and 1-4 variants each, and a short brand story.
-Write fresh, plain copy. No superlatives you can't back up, no fake reviews, no medical or legal claims.`;
+export const GENERATE_SYSTEM = `You build complete small online stores for a real owner who will sell real products.
+Return: a brand name (2-3 words; use the owner's brand name if they give one; never an existing famous brand), a short tagline,
+a homepage headline (under 50 characters) and subheading, an accent colour (#rrggbb, dark enough for white text, taken from the
+products' look when photos are given), products, a short brand story, a one-line announcement bar, and 3-5 shopper FAQs.
+PHOTOS: if product photos are attached, make exactly one product per photo and set photoIndex to that photo's position (0-based).
+Describe only what you can see or what the owner told you: material, colour, size, use. If the owner gives names, prices, sizes or
+variants, use them exactly. If there are no photos, create 3-4 fitting products and set photoIndex to null.
+Prices: realistic US dollars for the product and its quality. Variants: real options (sizes, colours) or a single "Standard".
+FAQs: shipping, returns, care/usage, sizing — answer with sensible defaults the owner can edit (30-day returns, ships in 1-3 business days).
+Write fresh, plain, honest copy. No invented reviews, awards, statistics, certifications, discounts or "was" prices; no medical,
+health or legal claims.`;
 
 const APPS: (keyof Apps)[] = ["reviews", "popup", "email", "loyalty"];
 const HEX = /^#[0-9a-fA-F]{6}$/;
@@ -211,8 +226,15 @@ export function toAssistantAction(a: AiAction | null, store: Store): AssistantAc
 }
 
 /** Merge an AI-written store into the locally generated one (keeps ids, artwork, flows, defaults). */
-export function applyGenerated(base: Store, g: GeneratedJson): Store {
-  const products = g.products.slice(0, 6).map((p, i) => {
+export function applyGenerated(base: Store, g: GeneratedJson, photoIds: string[] = []): Store {
+  const used = new Set<number>();
+  let list = g.products.slice(0, Math.max(6, photoIds.length));
+  // every uploaded photo gets a product, even if the model skipped one
+  photoIds.forEach((_, idx) => {
+    if (!list.some((p) => p.photoIndex === idx)) list.push({ title: `Product ${idx + 1}`, description: "", priceDollars: 0, variants: [], photoIndex: idx });
+  });
+  if (photoIds.length) list = list.filter((p) => p.photoIndex !== null && p.photoIndex >= 0 && p.photoIndex < photoIds.length && !used.has(p.photoIndex) && (used.add(p.photoIndex), true));
+  const products = list.map((p, i) => {
     const b = base.products[i % base.products.length];
     const priceCents = Math.max(100, Math.round(Number(p.priceDollars) * 100) || b.priceCents);
     return {
@@ -225,6 +247,7 @@ export function applyGenerated(base: Store, g: GeneratedJson): Store {
       variants: (p.variants || []).map((v) => String(v).slice(0, 30)).slice(0, 6),
       seoTitle: `${p.title} | ${g.name}`.slice(0, 70),
       art: b.art + i * 7919,
+      image: photoIds.length && p.photoIndex !== null ? photoIds[p.photoIndex] : undefined,
     };
   });
   const keepIds = new Set(products.map((p) => p.id));
@@ -238,5 +261,8 @@ export function applyGenerated(base: Store, g: GeneratedJson): Store {
     products,
     reviews: base.reviews.filter((r) => keepIds.has(r.productId)),
     story: { title: g.storyTitle.slice(0, 80) || base.story.title, body: g.storyBody.slice(0, 1200) || base.story.body },
+    announcement: (g.announcement || base.announcement).slice(0, 120),
+    faqs: g.faqs?.length ? g.faqs.slice(0, 8).map((f) => ({ q: f.q.slice(0, 140), a: f.a.slice(0, 600) })) : base.faqs,
+    sections: g.faqs?.length ? base.sections.map((s) => (s.id === "faq" ? { ...s, enabled: true } : s)) : base.sections,
   };
 }

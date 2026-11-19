@@ -33,6 +33,8 @@ export type Product = {
   status: "active" | "draft";
   seoTitle: string;
   art: number; // seed for generated artwork
+  /** uploaded product photo (media id); shown instead of the artwork */
+  image?: string;
 };
 
 export type Review = {

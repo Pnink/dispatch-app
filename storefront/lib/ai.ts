@@ -196,15 +196,6 @@ function slugify(s: string) {
   return s.toLowerCase().replace(/&/g, "and").replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
 }
 
-const REVIEWERS = ["Maya R.", "Jonas K.", "Priya S.", "Tom W.", "Aiko M.", "Lena H.", "Sam O.", "Chloe D.", "Ravi P.", "Noor A."];
-const REVIEW_BODIES = [
-  "Exactly as described and arrived quickly. Already planning a second order.",
-  "Lovely quality for the price. The packaging was a nice touch too.",
-  "Really happy with this. Fits right into my routine.",
-  "Better than I expected. Would recommend to friends.",
-  "Good product, shipping took a few extra days but worth the wait.",
-  "This has become a daily favourite. Five stars.",
-];
 
 export type GenerationStep = { label: string; detail: string };
 
@@ -249,13 +240,12 @@ export function generateStore(prompt: string, forced?: Category, existingSlugs: 
 
   const products: Product[] = t.products.slice(0, 3 + (r() > 0.5 ? 1 : 0)).map((p, i) => {
     const price = Math.round(p.price[0] + r() * (p.price[1] - p.price[0]));
-    const onSale = i === 1 && r() > 0.4;
     return {
       id: uid(),
       title: p.title,
       description: p.desc,
       priceCents: price * 100,
-      compareAtCents: onSale ? Math.round(price * 1.25) * 100 : undefined,
+      compareAtCents: undefined, // no invented "was" prices: only show a sale price the item really sold at
       variants: p.variants,
       stock: 8 + Math.floor(r() * 60),
       status: "active",
@@ -264,15 +254,9 @@ export function generateStore(prompt: string, forced?: Category, existingSlugs: 
     };
   });
 
-  const reviews: Review[] = products.flatMap((p) =>
-    Array.from({ length: 2 + Math.floor(r() * 2) }, () => ({
-      id: uid(),
-      productId: p.id,
-      author: pick(r, REVIEWERS),
-      rating: r() > 0.25 ? 5 : 4,
-      body: pick(r, REVIEW_BODIES),
-    })),
-  );
+  // No invented reviews: on a real store fake reviews are illegal (e.g. the US FTC rule of 2024).
+  // Reviews start empty and come only from real customers.
+  const reviews: Review[] = [];
 
   const tagline = pick(r, t.heroes);
   return withDefaults({

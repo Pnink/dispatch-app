@@ -75,7 +75,7 @@ export default function SettingsPage() {
 
         <Panel title="Your data">
           <div className="space-y-4 p-5">
-            <p className="text-sm text-muted">It&apos;s yours. Take all of it, any time, in formats any other platform can read.</p>
+            <p className="text-sm text-muted">It&apos;s yours. Take all of it, any time, in formats any other platform can read. Product photos are stored in the <code className="rounded bg-surface px-1">data/uploads</code> folder — to move everything, copy the whole <code className="rounded bg-surface px-1">data</code> folder.</p>
             <div className="flex flex-wrap gap-2">
               <Button onClick={downloadBackup}><Download className="h-4 w-4" /> Full backup (.json)</Button>
               <Button variant="secondary" onClick={() => downloadCsv(store, "orders")}>Orders CSV</Button>

@@ -1,5 +1,7 @@
 import type { Category } from "@/lib/types";
 
+export const mediaUrl = (id: string) => `/api/public/media/${encodeURIComponent(id)}`;
+
 /**
  * Generated product imagery (stand-in for AI product photography).
  * Pure SVG: a soft backdrop, a floor shadow and a simple object silhouette
@@ -12,6 +14,7 @@ export function ProductArt({
   accent,
   soft,
   className = "",
+  image,
 }: {
   seed: number;
   title: string;
@@ -19,7 +22,14 @@ export function ProductArt({
   accent: string;
   soft: string;
   className?: string;
+  /** an uploaded product photo; when set it's shown instead of the drawn artwork */
+  image?: string;
 }) {
+  if (image)
+    return (
+      // eslint-disable-next-line @next/next/no-img-element
+      <img src={mediaUrl(image)} alt={title} loading="lazy" decoding="async" className={`object-cover ${className}`} style={{ background: soft }} />
+    );
   const s = seed % 1000;
   const tilt = (s % 7) - 3;
   const circleX = 30 + (s % 40);

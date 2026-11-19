@@ -36,8 +36,8 @@ export default function ProductPage() {
       <nav className="text-xs opacity-60" aria-label="Breadcrumb"><Link href={base} className="hover:underline">Home</Link> / {product.title}</nav>
       <div className="mt-6 grid gap-10 md:grid-cols-2">
         <div className="grid gap-3">
-          <ProductArt seed={product.art} title={product.title} category={store.category} accent={store.palette.accent} soft={store.palette.soft} className="aspect-square w-full rounded-xl" />
-          <div className="grid grid-cols-3 gap-3">
+          <ProductArt image={product.image} seed={product.art} title={product.title} category={store.category} accent={store.palette.accent} soft={store.palette.soft} className="aspect-square w-full rounded-xl" />
+          <div className={product.image ? "hidden" : "grid grid-cols-3 gap-3"}>
             {[11, 23, 37].map((n) => (
               <ProductArt key={n} seed={product.art + n} title={`${product.title} detail`} category={store.category} accent={store.palette.accent} soft={store.palette.soft} className="aspect-square w-full rounded-lg" />
             ))}

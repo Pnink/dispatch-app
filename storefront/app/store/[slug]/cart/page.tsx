@@ -45,7 +45,7 @@ export default function CartPage() {
                 const p = store.products.find((x) => x.id === l.productId)!;
                 return (
                   <li key={`${l.productId}-${l.variant}`} className="flex gap-4 py-5">
-                    <ProductArt seed={p.art} title={p.title} category={store.category} accent={store.palette.accent} soft={store.palette.soft} className="h-24 w-24 shrink-0 rounded-lg" />
+                    <ProductArt image={p.image} seed={p.art} title={p.title} category={store.category} accent={store.palette.accent} soft={store.palette.soft} className="h-24 w-24 shrink-0 rounded-lg" />
                     <div className="flex flex-1 flex-col">
                       <div className="flex justify-between gap-3">
                         <Link href={`${base}/p/${p.id}`} className="font-medium hover:underline">{p.title}</Link>

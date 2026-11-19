@@ -75,7 +75,7 @@ export default function EmailPage() {
                 <p className="mt-4 text-sm leading-relaxed">{flow.body}</p>
                 {featured && (
                   <div className="mt-4 flex items-center gap-3">
-                    <ProductArt seed={featured.art} title={featured.title} category={store.category} accent={store.palette.accent} soft={store.palette.soft} className="h-16 w-16 rounded" />
+                    <ProductArt image={featured.image} seed={featured.art} title={featured.title} category={store.category} accent={store.palette.accent} soft={store.palette.soft} className="h-16 w-16 rounded" />
                     <div className="text-sm">{featured.title}<div className="opacity-60">{money(featured.priceCents)}</div></div>
                   </div>
                 )}

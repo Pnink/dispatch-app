@@ -7,7 +7,8 @@
 import type { NextRequest } from "next/server";
 import { readSettings, writeSettings } from "@/lib/server/db";
 import { body, json, rateLimit, sameOrigin } from "@/lib/server/http";
-import { AiError, callModel, keys, liveModels } from "@/lib/server/llm";
+import { AiError, callModel, keys, liveModels, type Part } from "@/lib/server/llm";
+import { isMediaId, readMedia } from "@/lib/server/media";
 import { CLAUDE_MODELS, OPENAI_MODELS, findModel, providerOf } from "@/lib/ai-models";
 import { ASSISTANT_SCHEMA, ASSISTANT_SYSTEM, GENERATE_SCHEMA, GENERATE_SYSTEM } from "@/lib/ai-actions";
 
@@ -37,7 +38,7 @@ export async function POST(req: NextRequest) {
   if (!sameOrigin(req)) return json({ error: "Bad origin." }, 403);
   // protects your bill if a page loops by mistake
   if (!rateLimit("ai", req, 30, 60_000)) return json({ error: "Too many AI requests in a minute. Take a breath." }, 429);
-  const b = await body<Record<string, unknown>>(req, 200_000);
+  const b = await body<Record<string, unknown>>(req, 200_000); // photos are sent by id, not inline
   if (!b) return json({ error: "Bad request." }, 400);
   const model = validModel(b.model) ? b.model : (await readSettings()).aiModel;
   if (model === "builtin") return json({ error: "No AI model selected." }, 400);
@@ -56,9 +57,17 @@ export async function POST(req: NextRequest) {
       return json({ model, label, ...(out as object) });
     }
     if (b.task === "generate") {
-      const prompt = typeof b.prompt === "string" ? b.prompt.trim().slice(0, 600) : "";
-      if (prompt.length < 8) return json({ error: "Describe the store in a sentence." }, 400);
-      const out = await callModel(model, GENERATE_SYSTEM, [{ role: "user", content: `Brief: ${prompt}\nCategory hint: ${String(b.category ?? "general").slice(0, 20)}` }], GENERATE_SCHEMA, { effort: "medium" });
+      const prompt = typeof b.prompt === "string" ? b.prompt.trim().slice(0, 2000) : "";
+      const ids = Array.isArray(b.images) ? b.images.filter(isMediaId).slice(0, 8) : [];
+      if (prompt.length < 3 && !ids.length) return json({ error: "Add a photo or describe the store." }, 400);
+      const parts: Part[] = [];
+      for (const [i, id] of ids.entries()) {
+        const m = await readMedia(id);
+        if (!m) return json({ error: "A photo is missing. Upload it again." }, 400);
+        parts.push({ type: "text", text: `Photo ${i}:` }, { type: "image", mediaType: m.type as "image/webp", data: m.buf.toString("base64") });
+      }
+      parts.push({ type: "text", text: `${ids.length ? `${ids.length} product photo(s) above.\n` : ""}Owner's notes: ${prompt || "(none — work from the photos)"}\nCategory hint: ${String(b.category ?? "general").slice(0, 20)}` });
+      const out = await callModel(model, GENERATE_SYSTEM, [{ role: "user", content: parts }], GENERATE_SCHEMA, { effort: "medium" });
       return json({ model, label, store: out });
     }
     return json({ error: "Unknown task." }, 400);
