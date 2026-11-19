@@ -59,10 +59,10 @@ export default function ExamplesPage() {
             <article key={prompt} className="overflow-hidden rounded-xl border border-border bg-bg shadow-card">
               <div className="p-4" style={{ background: s.palette.bg, color: s.palette.text }}>
                 <div className="flex items-center justify-between text-xs">
-                  <span className={s.font === "serif" ? "font-display text-base" : "text-sm font-semibold"}>{s.name}</span>
+                  <span className={s.font === "serif" ? "font-serif text-base" : "text-sm font-semibold"}>{s.name}</span>
                   <span className="opacity-60">Shop · Cart</span>
                 </div>
-                <div className={`mt-4 text-lg leading-tight ${s.font === "serif" ? "font-display" : "font-semibold"}`}>{s.heroHeadline}</div>
+                <div className={`mt-4 text-lg leading-tight ${s.font === "serif" ? "font-serif" : "font-semibold"}`}>{s.heroHeadline}</div>
                 <div className="mt-3 grid grid-cols-3 gap-2">
                   {s.products.slice(0, 3).map((p) => (
                     <ProductArt key={p.id} seed={p.art} title={p.title} category={s.category} accent={s.palette.accent} soft={s.palette.soft} className="aspect-square w-full rounded" />

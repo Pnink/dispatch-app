@@ -1,8 +1,8 @@
 "use client";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Trash2 } from "lucide-react";
-import { deleteStore, resetDemo, updateStore, useCurrentStore } from "@/lib/store";
+import { Download, Trash2, Upload } from "lucide-react";
+import { deleteStore, downloadBackup, downloadCsv, resetDemo, restoreBackup, updateStore, useCurrentStore } from "@/lib/store";
 import { PageHeader, Panel } from "@/components/dashboard/PageHeader";
 import { Button, Field, Toggle } from "@/components/ui";
 
@@ -12,6 +12,7 @@ export default function SettingsPage() {
   const [code, setCode] = useState("");
   const [pct, setPct] = useState("15");
   const [err, setErr] = useState("");
+  const [restoreMsg, setRestoreMsg] = useState<{ ok: boolean; text: string } | null>(null);
 
   const addCode = () => {
     const c = code.trim().toUpperCase().replace(/\s/g, "");
@@ -67,6 +68,38 @@ export default function SettingsPage() {
             <Button type="submit">Add code</Button>
             {err && <p className="w-full text-xs text-danger" role="alert">{err}</p>}
           </form>
+        </Panel>
+
+        <Panel title="Your data">
+          <div className="space-y-4 p-5">
+            <p className="text-sm text-muted">It&apos;s yours. Take all of it, any time, in formats any other platform can read.</p>
+            <div className="flex flex-wrap gap-2">
+              <Button onClick={downloadBackup}><Download className="h-4 w-4" /> Full backup (.json)</Button>
+              <Button variant="secondary" onClick={() => downloadCsv(store, "orders")}>Orders CSV</Button>
+              <Button variant="secondary" onClick={() => downloadCsv(store, "products")}>Products CSV</Button>
+              <Button variant="secondary" onClick={() => downloadCsv(store, "subscribers")}>Email list CSV</Button>
+            </div>
+            <div className="rounded-md border border-dashed border-border-input/60 p-4">
+              <label className="flex cursor-pointer items-center gap-2 text-sm font-medium">
+                <Upload className="h-4 w-4" aria-hidden /> Restore from a backup file
+                <input
+                  type="file"
+                  accept="application/json,.json"
+                  className="sr-only"
+                  onChange={async (e) => {
+                    const f = e.target.files?.[0];
+                    e.target.value = "";
+                    if (!f) return;
+                    if (!confirm("Replace everything in this browser with the backup? Download a backup first if you're unsure.")) return;
+                    const error = restoreBackup(await f.text());
+                    setRestoreMsg(error ? { ok: false, text: error } : { ok: true, text: "Restored." });
+                  }}
+                />
+              </label>
+              <p className="mt-1 text-xs text-muted">Replaces all stores, orders and settings in this browser.</p>
+              {restoreMsg && <p className={`mt-2 text-xs ${restoreMsg.ok ? "text-success" : "text-danger"}`} role="status">{restoreMsg.text}</p>}
+            </div>
+          </div>
         </Panel>
 
         <Panel title="Danger zone">

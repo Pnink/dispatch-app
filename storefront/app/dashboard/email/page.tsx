@@ -71,7 +71,7 @@ export default function EmailPage() {
             <div className="rounded-lg border border-border bg-surface p-4" aria-label="Email preview">
               <div className="text-xs text-muted">From: {store.name} · Subject: <span className="text-text">{flow.subject}</span></div>
               <div className="mt-3 rounded-md p-5" style={{ background: store.palette.bg, color: store.palette.text }}>
-                <div className={store.font === "serif" ? "font-display text-xl" : "text-lg font-semibold"}>{store.name}</div>
+                <div className={store.font === "serif" ? "font-serif text-xl" : "text-lg font-semibold"}>{store.name}</div>
                 <p className="mt-4 text-sm leading-relaxed">{flow.body}</p>
                 {featured && (
                   <div className="mt-4 flex items-center gap-3">

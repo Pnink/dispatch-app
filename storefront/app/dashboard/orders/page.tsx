@@ -57,7 +57,7 @@ function Orders() {
         {rows.length === 0 ? (
           <p className="px-5 py-14 text-center text-sm text-muted">{store.orders.length ? "No orders match this filter." : "No orders yet. They'll appear here as soon as someone checks out."}</p>
         ) : (
-          <div className="overflow-x-auto">
+          <div className="relative overflow-x-auto">
             <table className="w-full text-left text-sm">
               <thead className="bg-surface/60 text-xs text-muted">
                 <tr>

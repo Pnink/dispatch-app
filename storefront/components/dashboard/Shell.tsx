@@ -4,13 +4,14 @@ import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { Blocks, Bot, ExternalLink, FlaskConical, Home, Mail, Package, Palette, Plus, Send, Settings, ShoppingCart, X } from "lucide-react";
 import { assistant, type AssistantAction } from "@/lib/ai";
-import { setCurrentStore, updateStore, useCurrentStore, useDB } from "@/lib/store";
+import { markOwner, setCurrentStore, updateStore, useCurrentStore, useDB } from "@/lib/store";
+import { CommandPalette, useCommandPalette } from "./CommandPalette";
 import { LogoMark } from "@/components/Logo";
 import { Badge, LinkButton } from "@/components/ui";
 import { cx } from "@/lib/format";
 
 const NAV = [
-  { href: "/dashboard", label: "Home", icon: Home },
+  { href: "/dashboard", label: "Today", icon: Home },
   { href: "/dashboard/orders", label: "Orders", icon: ShoppingCart },
   { href: "/dashboard/products", label: "Products", icon: Package },
   { href: "/dashboard/apps", label: "Built-in apps", icon: Blocks },
@@ -26,7 +27,9 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
   const store = useCurrentStore();
   const [chatOpen, setChatOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
+  const palette = useCommandPalette();
   useEffect(() => {
+    markOwner(); // this browser belongs to the owner: show owner tools on storefronts here
     setMounted(true);
   }, []);
 
@@ -97,8 +100,11 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
             ))}
           </div>
           <div className="hidden truncate text-sm text-muted md:block">{store.name}</div>
-          <Badge tone={store.published ? "success" : "warning"}>{store.published ? "Live" : "Draft"}</Badge>
-          <button onClick={() => setChatOpen((v) => !v)} aria-expanded={chatOpen} className={cx("ml-auto flex items-center gap-2 rounded-md px-3 py-1.5 text-sm", chatOpen ? "bg-accent text-on-accent" : "border border-border hover:bg-surface")}>
+          <Badge tone={store.published ? "success" : "warning"}>{store.published ? "Live" : "Hidden"}</Badge>
+          <button onClick={() => palette.setOpen(true)} className="ml-auto hidden items-center gap-2 rounded-md border border-border px-3 py-1.5 text-sm text-muted hover:bg-surface sm:flex" aria-label="Open command palette">
+            Jump to… <kbd className="rounded border border-border px-1 text-[10px]">⌘K</kbd>
+          </button>
+          <button onClick={() => setChatOpen((v) => !v)} aria-expanded={chatOpen} className={cx("ml-auto flex items-center gap-2 rounded-md px-3 py-1.5 text-sm sm:ml-0", chatOpen ? "bg-accent text-on-accent" : "border border-border hover:bg-surface")}>
             <Bot className="h-4 w-4" /> Assistant
           </button>
         </header>
@@ -107,6 +113,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
           {chatOpen && <AssistantPanel onClose={() => setChatOpen(false)} />}
         </div>
       </div>
+      {palette.open && <CommandPalette onClose={() => palette.setOpen(false)} />}
     </div>
   );
 }
@@ -122,10 +129,12 @@ function AssistantPanel({ onClose }: { onClose: () => void }) {
   ]);
   const [input, setInput] = useState("");
   const [thinking, setThinking] = useState(false);
-  const endRef = useRef<HTMLDivElement>(null);
+  const logRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    endRef.current?.scrollIntoView({ behavior: "smooth" });
+    // scroll the chat log itself, never the page
+    const el = logRef.current;
+    if (el) el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
   }, [msgs, thinking]);
 
   const send = (text: string) => {
@@ -154,7 +163,7 @@ function AssistantPanel({ onClose }: { onClose: () => void }) {
         <div className="flex items-center gap-2 text-sm font-medium"><Bot className="h-4 w-4 text-accent" /> Assistant <span className="text-xs font-normal text-muted">· on {page}</span></div>
         <button onClick={onClose} aria-label="Close assistant" className="rounded p-1 hover:bg-surface"><X className="h-4 w-4" /></button>
       </div>
-      <div className="flex-1 space-y-3 overflow-y-auto p-4" aria-live="polite">
+      <div ref={logRef} className="flex-1 space-y-3 overflow-y-auto p-4" aria-live="polite">
         {msgs.map((m, i) => (
           <div key={i} className={m.role === "user" ? "ml-auto w-fit max-w-[85%] rounded-lg bg-ink px-3 py-2 text-sm text-on-ink" : "max-w-[92%]"}>
             {m.role === "user" ? (
@@ -178,7 +187,6 @@ function AssistantPanel({ onClose }: { onClose: () => void }) {
             <span className="dot">•</span><span className="dot">•</span><span className="dot">•</span>
           </div>
         )}
-        <div ref={endRef} />
       </div>
       <div className="border-t border-border p-3">
         <div className="mb-2 flex flex-wrap gap-1.5">

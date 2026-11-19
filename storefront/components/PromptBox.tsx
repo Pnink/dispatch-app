@@ -1,6 +1,6 @@
 "use client";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useId, useState } from "react";
 import { ArrowUp, Sparkles } from "lucide-react";
 import { CATEGORY_CHIPS } from "@/lib/ai";
 import { Chip } from "./ui";
@@ -8,6 +8,7 @@ import { Chip } from "./ui";
 export function PromptBox({ dark = false }: { dark?: boolean }) {
   const router = useRouter();
   const [text, setText] = useState("");
+  const id = useId();
   const go = (prompt: string, category?: string) => {
     const q = new URLSearchParams({ prompt });
     if (category) q.set("category", category);
@@ -22,9 +23,9 @@ export function PromptBox({ dark = false }: { dark?: boolean }) {
         }}
         className="relative rounded-xl border border-border bg-bg p-3 text-left shadow-pop"
       >
-        <label htmlFor="store-idea" className="sr-only">Describe your store idea</label>
+        <label htmlFor={id} className="sr-only">Describe your store idea</label>
         <textarea
-          id="store-idea"
+          id={id}
           rows={3}
           value={text}
           onChange={(e) => setText(e.target.value)}

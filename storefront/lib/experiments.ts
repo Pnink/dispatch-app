@@ -13,7 +13,7 @@ import { hash, uid } from "./ai";
 import type { Experiment, ExperimentKind, Store, Variant, VariantId } from "./types";
 
 // ---------- visitor identity ----------
-const VISITOR = "forgecart:visitor";
+const VISITOR = "wharf:visitor";
 
 export function visitorId(): string {
   if (typeof window === "undefined") return "server";
@@ -29,7 +29,7 @@ export function visitorId(): string {
   }
 }
 
-const seenKey = (slug: string) => `forgecart:ab-seen:${slug}`;
+const seenKey = (slug: string) => `wharf:ab-seen:${slug}`;
 export function seenExperiments(slug: string): string[] {
   try {
     return JSON.parse(localStorage.getItem(seenKey(slug)) || "[]");
@@ -46,7 +46,7 @@ export function markSeen(slug: string, ids: string[]) {
 }
 
 /** Preview overrides (?ab=<expId>.<a|b>), kept for the browser session; never counted in stats. */
-const forceKey = "forgecart:ab-force";
+const forceKey = "wharf:ab-force";
 export function forcedVariants(): Record<string, VariantId> {
   try {
     return JSON.parse(sessionStorage.getItem(forceKey) || "{}");

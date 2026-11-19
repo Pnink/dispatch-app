@@ -16,6 +16,7 @@
 | S12 Email | 2026-11-19 | done | previews only |
 | S13 Design | 2026-11-19 | done | |
 | S14–S18 Storefront → confirmation | 2026-11-19 | done | |
+| W01–W04 Rebrand to Wharf | 2026-11-19 | done | new platform site structure, /costs, white-label storefront, Today, sections, ⌘K, backup |
 | S20 Experiments | 2026-11-19 | done | refunds don't reverse experiment revenue; all visitors in one browser share one id |
 
 Harder than expected: `scrollIntoView` returns a Promise in current Chromium, so an expression-bodied
@@ -26,3 +27,8 @@ errors; no horizontal overflow at 390px on the homepage. Contrast check on token
 
 A/B testing: `npm run e2e` also runs `e2e/experiments.cjs` (assistant-started test, validation, preview not counted,
 new visitor counted once, order converts at the variant price, auto-rollout, manual rollout). Passes with 0 console errors.
+
+Rebrand (2026-11-19): sweep with `replica/brand.json` is clean. Fixed along the way: two prompt boxes shared one HTML id;
+the assistant's auto-scroll scrolled the whole page; the 7-day chart drew no bars (percent heights in an auto-height flex item);
+an absolutely positioned sr-only table header escaped its scroll box and widened phone layouts. `e2e/owner-tools.cjs` covers
+the new features; all three suites pass with 0 console errors, and no page overflows at 390px.

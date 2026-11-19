@@ -12,7 +12,7 @@ export function PageHeader({ title, sub, actions }: { title: string; sub?: strin
 
 export function Panel({ title, children, action, className = "" }: { title?: string; children: React.ReactNode; action?: React.ReactNode; className?: string }) {
   return (
-    <section className={`rounded-xl border border-border bg-bg ${className}`}>
+    <section className={`min-w-0 rounded-xl border border-border bg-bg ${className}`}>
       {title && (
         <div className="flex items-center justify-between border-b border-border px-5 py-3">
           <h2 className="text-sm font-semibold">{title}</h2>

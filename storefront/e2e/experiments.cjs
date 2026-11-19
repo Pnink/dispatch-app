@@ -11,7 +11,7 @@ const assert = (c, m) => { if (!c) throw new Error(m); };
   const errors = [];
   page.on("pageerror", (e) => errors.push(e.message));
   page.on("console", (m) => m.type() === "error" && errors.push(m.text()));
-  const db = () => page.evaluate(() => JSON.parse(localStorage.getItem("forgecart:v1")).stores[0]);
+  const db = () => page.evaluate(() => JSON.parse(localStorage.getItem("wharf:v1")).stores[0]);
   const shot = (n) => OUT && page.screenshot({ path: `${OUT}/${n}.png`, fullPage: false });
 
   // 1. assistant proposes and starts a headline test
@@ -59,8 +59,8 @@ const assert = (c, m) => { if (!c) throw new Error(m); };
   // (the page load after "Exit preview" already counted this browser as a normal visitor)
   const before = (await db()).experiments.find((x) => x.id === priceExp.id).variants.map((v) => ({ ...v }));
   await page.evaluate((slug) => {
-    localStorage.removeItem("forgecart:visitor");
-    localStorage.removeItem(`forgecart:ab-seen:${slug}`);
+    localStorage.removeItem("wharf:visitor");
+    localStorage.removeItem(`wharf:ab-seen:${slug}`);
     sessionStorage.clear();
   }, s.slug);
   await page.goto(`${B}/store/${s.slug}/p/${product.id}`);

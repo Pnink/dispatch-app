@@ -11,17 +11,18 @@ const B = 'http://localhost:3100';
   const shot = (n, full = true) => page.screenshot({ path: `${OUT}/${n}.png`, fullPage: full });
   const step = (s) => console.log('✓', s);
 
-  for (const [n, u] of [['S01-home', '/'], ['S02-pricing', '/pricing'], ['S03-faq', '/faq'], ['S04-about', '/about'], ['S05-examples', '/examples']]) {
+  for (const [n, u] of [['S01-home', '/'], ['S02-costs', '/costs'], ['S03-faq', '/faq'], ['S04-about', '/about'], ['S05-examples', '/examples']]) {
     await page.goto(B + u); await page.waitForLoadState('networkidle'); await shot(n); step(n);
   }
-  // pricing toggle
-  await page.goto(B + '/pricing'); await page.getByRole('radio', { name: /Monthly/ }).click();
-  if (!(await page.getByText('$99').count())) throw new Error('monthly price missing'); step('pricing toggle');
+  // costs calculator + old /pricing redirect
+  await page.goto(B + '/pricing'); await page.waitForURL(/\/costs/);
+  await page.getByRole('button', { name: 'Free tier' }).first().click();
+  await page.getByText('fixed +').waitFor(); step('costs page + /pricing redirect');
 
   // F01 create from homepage prompt
   await page.goto(B + '/');
-  await page.getByLabel('Describe your store idea').fill('A cosy coffee roaster with subscriptions, warm and earthy');
-  await page.getByRole('button', { name: 'Generate store' }).click();
+  await page.getByLabel('Describe your store idea').first().fill('A cosy coffee roaster with subscriptions, warm and earthy');
+  await page.getByRole('button', { name: 'Generate store' }).first().click();
   await page.waitForURL(/\/create/); await page.waitForTimeout(1500); await shot('S06-generating', false);
   await page.getByText('Your store is ready to review').waitFor({ timeout: 15000 });
   await shot('S07-review', false); step('generated + review');
@@ -53,7 +54,7 @@ const B = 'http://localhost:3100';
   await page.goto(B + '/dashboard/settings'); await shot('S19-settings', false);
 
   // storefront
-  const slug = await page.evaluate(() => JSON.parse(localStorage.getItem('forgecart:v1')).stores[0].slug);
+  const slug = await page.evaluate(() => JSON.parse(localStorage.getItem('wharf:v1')).stores[0].slug);
   await page.goto(`${B}/store/${slug}`);
   await page.getByRole('dialog').waitFor({ timeout: 6000 }); await shot('S14-popup', false);
   await page.keyboard.press('Escape'); step('popup shown + Esc closes');

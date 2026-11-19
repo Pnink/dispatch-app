@@ -4,6 +4,7 @@
  * swapped for an API route later without touching screen code.
  */
 import type { Category, EmailFlow, Palette, Product, Review, Store } from "./types";
+import { withDefaults } from "./sections";
 
 // ---------- seeded randomness ----------
 export function hash(s: string): number {
@@ -147,7 +148,7 @@ const TEMPLATES: Record<Category, Template> = {
     nameA: ["Bright", "Maple", "Kind", "True", "Little", "Blue"],
     nameB: ["Market", "Goods", "Shop", "Supply", "Co"],
     palettes: [
-      { accent: "#4338ca", onAccent: "#ffffff", bg: "#ffffff", soft: "#eef0fb", text: "#1c1917" },
+      { accent: "#1f5f8b", onAccent: "#ffffff", bg: "#ffffff", soft: "#e6eef5", text: "#162330" },
       { accent: "#0f766e", onAccent: "#ffffff", bg: "#fbfcfc", soft: "#e3f1ef", text: "#132322" },
     ],
     font: "sans",
@@ -274,7 +275,7 @@ export function generateStore(prompt: string, forced?: Category, existingSlugs: 
   );
 
   const tagline = pick(r, t.heroes);
-  return {
+  return withDefaults({
     slug,
     name,
     tagline,
@@ -297,7 +298,7 @@ export function generateStore(prompt: string, forced?: Category, existingSlugs: 
     experiments: [],
     published: false,
     createdAt: new Date().toISOString(),
-  };
+  });
 }
 
 function heroSubFrom(prompt: string, category: Category) {

@@ -8,10 +8,11 @@ import { useSyncExternalStore } from "react";
 import { generateStore, refundOrder, uid } from "./ai";
 import type { CartLine, Category, Customer, Order, OrderStatus, Store } from "./types";
 import { chargeCard, type CardInput } from "./payments";
+import { withDefaults } from "./sections";
 import { forcedVariants, markSeen, recordConversion, recordExposures, seenExperiments, shopperView, visitorId } from "./experiments";
 
-const KEY = "forgecart:v1";
-const CURRENT = "forgecart:current";
+const KEY = "wharf:v1";
+const CURRENT = "wharf:current";
 
 type DB = { stores: Store[] };
 
@@ -33,7 +34,7 @@ function read(): DB {
 
 /** Fill in fields added after a store was first saved. */
 function migrate(db: DB): DB {
-  return { stores: db.stores.map((s) => ({ ...s, experiments: s.experiments ?? [] })) };
+  return { stores: db.stores.map(withDefaults) };
 }
 
 function write(db: DB) {
@@ -134,7 +135,7 @@ export function resetDemo() {
   window.localStorage.removeItem(KEY);
   window.localStorage.removeItem(CURRENT);
   Object.keys(window.localStorage)
-    .filter((k) => k.startsWith("forgecart:cart:"))
+    .filter((k) => k.startsWith("wharf:cart:"))
     .forEach((k) => window.localStorage.removeItem(k));
   cache = null;
   read();
@@ -208,7 +209,7 @@ export async function placeOrder(slug: string, lines: CartLine[], customer: Cust
 }
 
 // ---------- cart (per store, localStorage) ----------
-const cartKey = (slug: string) => `forgecart:cart:${slug}`;
+const cartKey = (slug: string) => `wharf:cart:${slug}`;
 const cartCache = new Map<string, CartLine[]>();
 const NO_LINES: CartLine[] = [];
 
@@ -281,4 +282,87 @@ function seed(): DB {
   });
   demo.published = true;
   return { stores: [demo] };
+}
+
+// ---------- email list ----------
+export function addSubscriber(slug: string, email: string) {
+  const e = email.trim().toLowerCase();
+  updateStore(slug, (s) => (s.subscribers.includes(e) ? s : { ...s, subscribers: [...s.subscribers, e] }));
+}
+
+// ---------- owner flag (shows the owner tools bar on storefronts in the owner's browser only) ----------
+const OWNER = "wharf:owner";
+export function markOwner() {
+  try {
+    localStorage.setItem(OWNER, "1");
+  } catch {
+    /* ignore */
+  }
+}
+export function isOwner() {
+  try {
+    return localStorage.getItem(OWNER) === "1";
+  } catch {
+    return false;
+  }
+}
+
+// ---------- backup & export (no lock-in) ----------
+function download(name: string, text: string, type: string) {
+  const url = URL.createObjectURL(new Blob([text], { type }));
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = name;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+const stamp = () => new Date().toISOString().slice(0, 10);
+
+/** Everything: all stores, products, orders, experiments, settings. */
+export function downloadBackup() {
+  download(`wharf-backup-${stamp()}.json`, JSON.stringify({ format: "wharf-backup", version: 1, exportedAt: new Date().toISOString(), ...read() }, null, 2), "application/json");
+}
+
+/** Replace all data with a backup file's contents. Returns an error message, or null on success. */
+export function restoreBackup(text: string): string | null {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(text);
+  } catch {
+    return "That file isn't valid JSON.";
+  }
+  const p = parsed as { format?: string; stores?: unknown };
+  if (p.format !== "wharf-backup" || !Array.isArray(p.stores)) return "That doesn't look like a backup from this app.";
+  const db = migrate({ stores: p.stores as Store[] });
+  if (db.stores.some((s) => !s.slug || !s.name || !Array.isArray(s.products))) return "The backup is missing store data.";
+  write(db);
+  if (db.stores[0]) setCurrentStore(db.stores[0].slug);
+  return null;
+}
+
+const csvCell = (v: unknown) => {
+  const s = String(v ?? "");
+  return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+};
+const toCsv = (rows: unknown[][]) => rows.map((r) => r.map(csvCell).join(",")).join("\n");
+
+export function downloadCsv(store: Store, what: "orders" | "products" | "subscribers") {
+  let rows: unknown[][];
+  if (what === "orders")
+    rows = [
+      ["number", "date", "status", "customer", "email", "address", "city", "zip", "country", "items", "subtotal", "discount", "shipping", "total", "payment"],
+      ...store.orders.map((o) => [
+        o.number, o.createdAt, o.status, o.customer.name, o.customer.email, o.customer.address, o.customer.city, o.customer.zip, o.customer.country,
+        o.items.map((i) => `${i.qty}x ${i.title}${i.variant ? ` (${i.variant})` : ""}`).join("; "),
+        (o.subtotalCents / 100).toFixed(2), (o.discountCents / 100).toFixed(2), (o.shippingCents / 100).toFixed(2), (o.totalCents / 100).toFixed(2), o.paymentMethod,
+      ]),
+    ];
+  else if (what === "products")
+    rows = [
+      ["title", "price", "compare_at", "stock", "status", "variants", "seo_title", "description"],
+      ...store.products.map((p) => [p.title, (p.priceCents / 100).toFixed(2), p.compareAtCents ? (p.compareAtCents / 100).toFixed(2) : "", p.stock, p.status, p.variants.join("|"), p.seoTitle, p.description]),
+    ];
+  else rows = [["email"], ...store.subscribers.map((e) => [e])];
+  download(`${store.slug}-${what}-${stamp()}.csv`, toCsv(rows), "text/csv");
 }

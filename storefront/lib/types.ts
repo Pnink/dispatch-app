@@ -119,6 +119,9 @@ export type Experiment = {
   endedAt?: string;
 };
 
+export type SectionType = "hero" | "collection" | "trust" | "story" | "reviews" | "faq" | "newsletter";
+export type Section = { id: SectionType; enabled: boolean };
+
 export type Store = {
   slug: string;
   name: string;
@@ -140,6 +143,12 @@ export type Store = {
   flows: EmailFlow[];
   loyalty: Record<string, number>;
   experiments: Experiment[];
+  /** top bar text; empty hides it */
+  announcement: string;
+  sections: Section[];
+  story: { title: string; body: string };
+  faqs: { q: string; a: string }[];
+  subscribers: string[];
   published: boolean;
   createdAt: string;
 };

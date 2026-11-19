@@ -29,7 +29,7 @@ export default function ProductsPage() {
             <Button className="mt-4" onClick={() => setEditing(blank())}><Plus className="h-4 w-4" /> Add your first product</Button>
           </div>
         ) : (
-          <div className="overflow-x-auto">
+          <div className="relative overflow-x-auto">
             <table className="w-full text-left text-sm">
               <thead className="bg-surface/60 text-xs text-muted">
                 <tr>

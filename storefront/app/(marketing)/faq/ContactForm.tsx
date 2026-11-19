@@ -11,7 +11,7 @@ export function ContactForm() {
   if (sent)
     return (
       <div className="mt-6 flex items-center gap-3 rounded-lg bg-success/10 p-4 text-success" role="status">
-        <CheckCircle2 className="h-5 w-5" /> Thanks — your message is in. We&apos;ll be in touch soon.
+        <CheckCircle2 className="h-5 w-5" /> Saved for this session.
       </div>
     );
 
@@ -45,9 +45,9 @@ export function ContactForm() {
         />
         {errors.message && <p className="mt-1 text-xs text-danger">{errors.message}</p>}
       </div>
-      <p className="text-xs text-muted sm:col-span-2">By sending this you agree we can reply to you by email.</p>
+      <p className="text-xs text-muted sm:col-span-2">Notes are not stored yet.</p>
       <div>
-        <Button type="submit" loading={loading}>Send message</Button>
+        <Button type="submit" loading={loading}>Save note</Button>
       </div>
     </form>
   );

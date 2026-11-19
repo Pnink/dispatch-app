@@ -1,104 +1,62 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { Plus } from "lucide-react";
 import { ContactForm } from "./ContactForm";
 
 export const metadata: Metadata = { title: "FAQ" };
 
-const SECTIONS: { id: string; title: string; qs: [string, string][] }[] = [
+const SECTIONS: { id: string; title: string; qs: [string, React.ReactNode][] }[] = [
   {
-    id: "getting-started",
-    title: "Getting started",
+    id: "basics",
+    title: "The basics",
     qs: [
-      ["What is Forgecart?", "A hosted commerce platform where the storefront, the back office and an AI assistant share one system. You describe a store; it builds it and then helps you run it."],
-      ["How do I create a store?", "Write one sentence about what you want to sell (or tap a category). The assistant picks a name, palette and layout, writes a handful of products with imagery, and gives you a preview to review."],
-      ["Do I need to be technical?", "No. There are no themes to install, no DNS to wrangle and no plugins to stitch together. If you do like code, you can add your own CSS and HTML blocks."],
-      ["Can I try it for free?", "Yes. You can build and preview a complete store without a card. You only choose a plan when you want to take real orders on your own domain."],
-      ["Do I need extra apps?", "Reviews, an email-capture popup, email flows and a loyalty programme are built in — each is a single switch in the dashboard."],
+      ["What is this?", "A store platform you own: describe a shop, get a finished storefront, and run it from a dashboard with an assistant, A/B tests and built-in apps. It's a private build for one owner — there are no plans or accounts to buy."],
+      ["What does it cost?", <>Nothing for the software. Running a real store has outside costs — card processing, hosting, a domain. <Link href="/costs" className="underline">The Costs page</Link> lays them out with a calculator.</>],
+      ["Is any feature locked?", "No. The assistant, experiments, reviews, popups, email flows and loyalty points are all on, for every store, with no limits on products or orders."],
+      ["Can I run more than one store?", "Yes, as many as you like. Switch between them from the dashboard sidebar or with ⌘K."],
     ],
   },
   {
-    id: "building",
-    title: "Building your store",
+    id: "customers",
+    title: "Your customers",
     qs: [
-      ["How do I change the design?", "Ask the assistant (\"make the accent green\", \"go darker\", \"new homepage headline\") or edit settings directly. Changes appear in the preview straight away."],
-      ["Can I edit every page?", "Home, product, cart and checkout pages are all editable, along with landing pages for launches and promotions."],
-      ["Will it work on phones?", "Every storefront is designed mobile-first and tested at phone and desktop sizes."],
-      ["Can I use my own logo and colours?", "Yes — upload a logo and set exact colours, or describe a mood and let the assistant propose a palette."],
+      ["Will shoppers know what platform I use?", "No. Storefronts show your store name in the browser tab, your own favicon, your colours, and no “powered by” line or platform link anywhere — not in the page, the footer, checkout or order pages."],
+      ["Do shoppers need an account?", "No. Guest checkout is the default."],
+      ["What do they see that I don't want them to?", "Nothing. The small dark owner bar at the top of a storefront only shows in your own browser (the one you use the dashboard in)."],
     ],
   },
   {
-    id: "products",
-    title: "Products & inventory",
+    id: "real",
+    title: "Running it for real",
     qs: [
-      ["How do I add a product?", "Type a product name and the assistant drafts the description, price, variants and search title. Edit anything before saving, or add products manually."],
-      ["Do you support variants?", "Yes. Sizes, colours or any option you like, each selectable by the shopper."],
-      ["How is stock tracked?", "Stock goes down as orders come in and back up when you refund. The assistant warns you when something is running low."],
-      ["Can I import from another platform?", "CSV import and assisted migration are on the roadmap for this demo; the production version would map products, customers and orders across."],
+      ["Can I sell real things on it today?", "Not yet. Right now everything is stored in your browser and payments are simulated. To take real orders it needs three things: real payments (Stripe), a real database, and hosting on your own domain. Each is a well-understood step — see the next answers."],
+      ["What would real payments need?", "A Stripe account (free to open). Your bank details go into Stripe, never into this app; Stripe pays you out. The app only needs your Stripe API keys, and test mode works with no bank or ID at all."],
+      ["Where would it be hosted?", "Any host that runs Next.js. Check that the plan you pick allows commercial use — some free tiers don't."],
+      ["Is it safe to run my real store on it?", "Once it's on a real database and real payments, with backups, yes — that's the same setup most independent stores use. Card numbers are handled entirely by the payment processor, never by your server."],
     ],
   },
   {
     id: "payments",
-    title: "Payments & checkout",
+    title: "Payments in this build",
     qs: [
-      ["Which payment methods can shoppers use?", "Cards plus popular wallets and local methods. In this demo all payments are simulated — use 4242 4242 4242 4242 to succeed or 4000 0000 0000 0002 to see a decline."],
-      ["Do shoppers need an account?", "No. Guest checkout is the default."],
-      ["Do you take a cut of sales?", "No platform fee. Card processing is charged at the processor's rate."],
-      ["Can I offer discount codes?", "Yes. Create codes in the dashboard or just ask the assistant for \"a 15% discount\"."],
+      ["How do I test checkout?", "Use 4242 4242 4242 4242 with any future expiry and any CVC. 4000 0000 0000 0002 shows a decline; 4000 0000 0000 9995 shows insufficient funds. Wallet buttons are simulated."],
+      ["Do discount codes work?", "Yes. Create them in Settings, or ask the assistant for “a 15% discount”. The popup can hand one out automatically."],
     ],
   },
   {
-    id: "shipping",
-    title: "Shipping & fulfilment",
+    id: "data",
+    title: "Your data",
     qs: [
-      ["How do shipping rates work?", "Each store has a flat rate and a free-shipping threshold, both editable. Shoppers see a progress bar towards free shipping in the cart."],
-      ["How do I fulfil an order?", "Open Orders, choose the order and mark it fulfilled. Refunds put stock back automatically."],
-      ["Do you integrate with carriers?", "Live carrier rates and label printing are out of scope for this demo."],
+      ["Can I get everything out?", "Yes — Settings → Your data. A full JSON backup of every store, plus orders, products and your email list as CSV files any other platform can import."],
+      ["How do I move to another computer?", "Download a full backup on the old one and restore it on the new one, from the same screen."],
+      ["What happens if I clear my browser?", "In this build, the data goes with it. Download a backup first. A real database removes this problem."],
     ],
   },
   {
-    id: "migration",
-    title: "Moving from another platform",
+    id: "later",
+    title: "Later",
     qs: [
-      ["Can I bring my existing store?", "The full product would import products, customers, order history, redirects and discount codes. This demo starts every store fresh."],
-      ["Will I lose search rankings?", "A proper migration keeps URLs or adds permanent redirects so search engines follow along."],
-      ["How long does a move take?", "Most small catalogues move in a day or two; very large ones take longer."],
-    ],
-  },
-  {
-    id: "ai",
-    title: "AI & automation",
-    qs: [
-      ["What can the assistant actually do?", "Answer questions about your store, and propose actions — create discounts, add products, restock, refund orders, restyle the storefront, write search titles. You approve each action with one click."],
-      ["Does it act without asking?", "No. Every change is proposed first and applied only when you press the button."],
-      ["Is this demo using a real AI model?", "No. The demo uses a deterministic, rules-based stand-in so it works offline with no API keys. The architecture is ready for a real model."],
-    ],
-  },
-  {
-    id: "domains",
-    title: "Domains, email & SEO",
-    qs: [
-      ["Can I use my own domain?", "In production, yes, with automatic SSL. In this demo each store lives at /store/your-store-name."],
-      ["Which emails are sent?", "Welcome, abandoned checkout, post-purchase and review-request flows. In the demo you can preview and edit them; nothing is actually sent."],
-      ["What about SEO?", "Every product has an editable search title, and the assistant can write them for you in bulk."],
-    ],
-  },
-  {
-    id: "billing",
-    title: "Billing & plans",
-    qs: [
-      ["Which plan should I pick?", "Launch for a single store, Grow when you add a second brand or teammates, Scale for teams with several storefronts, and Enterprise for high volume."],
-      ["Can I change plans later?", "Any time. Upgrades and downgrades are prorated."],
-      ["Is yearly billing cheaper?", "Yes — 20% less than paying monthly."],
-      ["What happens if I cancel?", "Your storefront is paused and your data is kept so you can export it."],
-    ],
-  },
-  {
-    id: "security",
-    title: "Security & data",
-    qs: [
-      ["Where is demo data stored?", "Only in your browser's local storage. Clearing site data, or using Reset demo in the dashboard, wipes it."],
-      ["Who owns my data?", "You do. It is never sold and never used to train models."],
-      ["Can I give teammates limited access?", "Role-based permissions are part of the production plan; this demo has a single merchant."],
+      ["Could this become an app other people pay for?", "Possibly, down the line. That would need accounts, billing, multi-tenant data and a lot of hardening. It's deliberately out of scope until your own store runs well on it."],
     ],
   },
 ];
@@ -106,26 +64,20 @@ const SECTIONS: { id: string; title: string; qs: [string, string][] }[] = [
 export default function FaqPage() {
   return (
     <div className="mx-auto max-w-4xl px-4 py-20 sm:px-6">
-      <h1 className="font-display text-5xl">Questions, answered</h1>
-      <p className="mt-4 max-w-xl text-muted">Everything about building, selling and running a store on Forgecart. Can&apos;t find it? Send us a note at the bottom.</p>
+      <h1 className="font-display text-5xl">Straight answers</h1>
+      <p className="mt-4 max-w-xl text-muted">How it works, what it costs, what your customers see, and what it still needs before you sell real things on it.</p>
 
-      <nav aria-label="FAQ categories" className="mt-8 flex flex-wrap gap-2">
-        <span className="py-1.5 text-sm text-muted">Jump to:</span>
+      <nav aria-label="FAQ sections" className="mt-8 flex flex-wrap gap-2">
         {SECTIONS.map((s) => (
-          <a key={s.id} href={`#${s.id}`} className="rounded-full border border-border px-3 py-1.5 text-sm hover:border-border-input">
-            {s.title}
-          </a>
+          <a key={s.id} href={`#${s.id}`} className="rounded-full border border-border px-3 py-1.5 text-sm hover:border-border-input">{s.title}</a>
         ))}
       </nav>
 
-      <div className="mt-14 space-y-14">
-        {SECTIONS.map((s, i) => (
+      <div className="mt-14 space-y-12">
+        {SECTIONS.map((s) => (
           <section key={s.id} id={s.id} className="scroll-mt-24">
-            <h2 className="flex items-baseline gap-3 text-2xl font-semibold">
-              <span className="font-mono text-sm text-muted">{String(i + 1).padStart(2, "0")}</span>
-              {s.title}
-            </h2>
-            <div className="mt-4 divide-y divide-border rounded-xl border border-border">
+            <h2 className="text-2xl font-semibold">{s.title}</h2>
+            <div className="mt-4 divide-y divide-border rounded-xl border border-border bg-bg">
               {s.qs.map(([q, a]) => (
                 <details key={q} className="group px-5 py-4">
                   <summary className="flex items-center justify-between gap-4 font-medium">
@@ -141,8 +93,8 @@ export default function FaqPage() {
       </div>
 
       <section id="contact" className="mt-20 scroll-mt-24 rounded-xl border border-border bg-surface p-6 sm:p-10">
-        <h2 className="font-display text-3xl">Still have a question?</h2>
-        <p className="mt-2 text-sm text-muted">Drop us a line and we&apos;ll reply within one business day. (Demo: messages aren&apos;t sent anywhere.)</p>
+        <h2 className="font-display text-3xl">Notes to self</h2>
+        <p className="mt-2 text-sm text-muted">A scratch form for ideas and bugs. (Nothing is sent anywhere yet.)</p>
         <ContactForm />
       </section>
     </div>

@@ -1,9 +1,10 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import { BRAND } from "@/lib/brand";
 
 export const metadata: Metadata = {
-  title: { default: "Forgecart — describe a store, launch it", template: "%s · Forgecart" },
-  description: "Demo: an AI-native commerce platform. Describe a store in a sentence and run it from one admin.",
+  title: { default: `${BRAND.name} — ${BRAND.tagline}`, template: `%s · ${BRAND.name}` },
+  description: "Describe a store, launch it, and run it with an assistant. Every feature on, no monthly plan.",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

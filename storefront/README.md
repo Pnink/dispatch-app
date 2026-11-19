@@ -1,8 +1,8 @@
-# Forgecart: storefront demo
+# wharf
 
-A personal demo of an AI-native commerce platform, modelled on the features and flows of Amboras. **Forgecart** is a placeholder brand. All copy, the logo and the code are original, and no AI model or payment service is called.
+A store platform you own. Describe a shop in one sentence, review what it generates, publish, and run it from a dashboard that tells you what to do next. Every feature is on, with no plans, no cut of your sales, and nothing on the storefront that says who built it.
 
-This folder is separate from the Dispatch Electron app at the repo root.
+This is a private, single-owner build that lives in `storefront/`, next to the Dispatch app in this repo.
 
 ## Run it
 
@@ -10,62 +10,68 @@ This folder is separate from the Dispatch Electron app at the repo root.
 cd storefront
 npm install
 npm run dev          # http://localhost:3100
-# or: npm run build && npm start
 ```
 
-Optional end-to-end walkthrough (Playwright must be available; start the server first):
+Tests (start the server first; Playwright must be installed):
 
 ```bash
-npm run e2e          # writes screenshots to replica/clone-screens/
+npm run e2e          # full loop + A/B testing + owner tools; screenshots → replica/clone-screens/
 ```
 
-## The demo loop
+## What's in it
 
-1. **Marketing site:** `/`, `/pricing`, `/faq`, `/about`, `/examples`.
-2. **Describe a store:** type a sentence in the homepage prompt box or on `/create`, or tap a category chip.
-3. **Generation:** progress steps, then a **review** screen with a live preview. Rename the store, then publish.
-4. **Merchant dashboard** (`/dashboard`):
-   - Home: KPIs, a 7-day revenue chart, a setup guide and recent orders.
-   - Orders: filter and search; fulfil or refund (refunds restock).
-   - Products: add, edit and delete, with **Draft with AI**.
-   - Built-in apps: on/off switches for **reviews, popup, email, loyalty**.
-   - Email: flow previews and editing.
-   - Design: AI restyle, colours, type and copy.
-   - Settings: shipping, discount codes, publish, reset demo.
-   - **Assistant** panel on every page. It proposes actions and you approve them. Try "How are sales going?", "Create a 20% discount", "Add a product called Travel Mug", "Make the accent green", "What's low on stock?", "Refund order #1002".
-5. **Customer storefront** (`/store/<slug>`): popup, product page with reviews, cart with a free-shipping bar, and guest checkout with discount codes.
-   - Card `4242 4242 4242 4242` succeeds, `4000 0000 0000 0002` is declined, `4000 0000 0000 9995` has insufficient funds. Wallet buttons are simulated.
-6. **Experiments** (`/dashboard/experiments`, or ask the assistant to "run an A/B test"):
-   - Test the homepage headline, a product's price, the free-shipping threshold or the popup discount.
-   - Each storefront visitor gets A or B and keeps it, and checkout charges the price that visitor was shown.
-   - Visitors are counted once; their orders count as conversions with revenue.
-   - Headline and shipping tests compare conversion rate. Price and discount tests compare revenue per visitor.
-   - The winner is rolled out automatically at 95% confidence once each version has the minimum number of visitors, or you can roll out B or keep A yourself.
-   - **Preview** links (`?ab=<id>.a|b`) show one version without counting it.
-   - **Simulate 250 visitors** adds labelled demo traffic, since a single browser can't produce real traffic.
-7. **Confirmation:** loyalty points are shown on the confirmation page, and the order appears in the dashboard.
+**Platform site:** `/`, `/examples`, `/costs` (a running-cost calculator; `/pricing` redirects here), `/faq`, `/about`. These pages are hidden from search engines.
 
-All data lives in **your browser's localStorage**, so use the same browser for the dashboard and the storefront. On first load the app seeds a sample store. **Settings → Reset demo data** wipes everything.
+**Create** (`/create`): describe the store, watch it generate, review it, then publish.
 
-## Layout
+**Dashboard** (`/dashboard`):
+- **Today:** a ranked list of what needs doing (orders to ship, stock that's sold out or low, experiments with a winner, list-growth ideas), with one-click fixes.
+- **Orders:** filter, search, fulfil and refund.
+- **Products:** includes AI drafts.
+- **Built-in apps:** reviews, email popup, email flows and loyalty points.
+- **Email:** flow editor with previews, plus your subscriber list.
+- **Experiments:** A/B tests on headlines, prices, free-shipping thresholds and popup discounts. Winners are chosen with Bayesian stats and can roll out automatically.
+- **Design:**
+  - AI restyle, colours and type.
+  - Homepage sections: reorder or hide them, and edit the announcement bar, brand story and storefront FAQ.
+- **Settings:**
+  - Shipping and discount codes.
+  - **Your data:** full JSON backup and restore, plus CSV exports of orders, products and the email list.
+- **Assistant** on every page. It proposes an action and applies it when you approve.
+- **⌘K / Ctrl+K** opens a command palette for every page, switch and store.
 
-```
-app/(marketing)/     home, pricing, faq, about, examples
-app/create/          describe → generate → review
-app/dashboard/       merchant admin + assistant (components/dashboard/Shell.tsx)
-app/store/[slug]/    customer storefront, product, cart, checkout, order
-lib/ai.ts            fake AI: store generator, product drafts, assistant intents
-lib/store.ts         localStorage data layer (swap for a real DB; see replica/schema.sql)
-lib/payments.ts      mocked card processor
-replica/             recon, architecture, schema, design tokens, feature matrix, parity report
-```
+**Storefront** (`/store/<slug>`): homepage built from your sections, product pages with reviews, cart, guest checkout with discount codes, order confirmation and loyalty points.
+- **White-label:**
+  - The browser tab shows your store name, with your own favicon.
+  - There is no "powered by" line anywhere.
+  - The server HTML never mentions the platform.
+  - The owner bar only appears in your own browser.
+- **Test payments:** `4242 4242 4242 4242` succeeds, `4000 0000 0000 0002` is declined, and `4000 0000 0000 9995` has insufficient funds.
 
-## Not done
+All data currently lives in **your browser's localStorage**. Use Settings → Your data to back it up or move it to another computer.
 
-See `replica/parity.md`. The main gaps:
+## Renaming it
 
-- No real AI.
-- No real accounts or database.
-- No real payments, shipping, domains or migration.
-- Variants have no per-variant price or stock.
-- Refunds don't subtract revenue from experiment results.
+The platform name lives in `lib/brand.ts`, and the mark lives in `components/Logo.tsx`. Neither ever appears on a storefront.
+
+## Going live (what's still needed to sell real things)
+
+1. **Real payments:**
+   - Stripe Checkout in test mode first, then live.
+   - Your bank details go into Stripe, never into this app.
+   - The app needs a server route plus a webhook to confirm orders.
+2. **Real database:**
+   - Replace `lib/store.ts` with Postgres (schema in `replica/schema.sql`).
+   - Add owner sign-in so only you can open `/dashboard`.
+3. **Hosting and domain:**
+   - Any Next.js host whose plan allows commercial use.
+   - Point your domain at the storefront.
+4. **Email:**
+   - A transactional email provider, so order confirmations and flows actually send.
+5. **Real AI (optional):**
+   - Route `lib/ai.ts` through a model API for generation and the assistant.
+6. **The basics:**
+   - Tax settings, shipping rates per country.
+   - Terms, privacy and returns pages.
+
+The planning notes behind this build (recon, architecture, brand, fixes, parity) are in `replica/`.

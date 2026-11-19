@@ -37,3 +37,10 @@ Shipping carriers labels and 3PL,shipping,could,yes,skip,needs carrier accounts
 Migration from Shopify/WooCommerce,migration,could,yes,skip,needs third-party accounts
 Multi-language storefront,storefront,could,yes,no,
 Subscriptions and bundles,products,could,yes,skip,not needed: single-user personal demo
+"White-label storefront (title, favicon, no platform text)",storefront,must,no,yes,fix #1; checked in e2e incl. server HTML
+No plans or fees; running-cost calculator,marketing,should,no,yes,fix #2; /costs
+Full backup/restore + CSV exports,data,must,no,yes,fix #3
+Today brief with one-click fixes,dashboard,should,no,yes,fix #4
+"Homepage section editor (order, hide, story, FAQ, announcement)",design,should,no,yes,fix #5
+Command palette,dashboard,could,no,yes,fix #6
+Email list from popup + newsletter,email,should,no,yes,

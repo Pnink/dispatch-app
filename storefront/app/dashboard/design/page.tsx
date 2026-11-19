@@ -7,6 +7,7 @@ import type { Palette } from "@/lib/types";
 import { PageHeader } from "@/components/dashboard/PageHeader";
 import { StoreHeader, StoreHome, StoreTheme } from "@/components/storefront";
 import { Button, Chip } from "@/components/ui";
+import { SectionsEditor } from "@/components/dashboard/SectionsEditor";
 
 const SWATCHES: { key: keyof Palette; label: string }[] = [
   { key: "accent", label: "Accent" },
@@ -33,7 +34,7 @@ export default function DesignPage() {
 
   return (
     <>
-      <PageHeader title="Design" sub="Describe a change or tweak the details. The preview updates live." />
+      <PageHeader title="Design" sub="Describe a change, rearrange the homepage, or tweak the details. The preview updates live." />
       <div className="grid gap-6 xl:grid-cols-[340px_1fr]">
         <div className="space-y-5">
           <section className="rounded-xl border border-border bg-bg p-5">
@@ -68,7 +69,7 @@ export default function DesignPage() {
             <h2 className="text-sm font-semibold">Type & copy</h2>
             <div className="flex gap-2" role="radiogroup" aria-label="Heading style">
               {(["serif", "sans"] as const).map((f) => (
-                <Chip key={f} selected={store.font === f} onClick={() => patch((s) => ({ ...s, font: f }))} className={f === "serif" ? "font-display" : ""}>{f === "serif" ? "Serif headings" : "Sans headings"}</Chip>
+                <Chip key={f} selected={store.font === f} onClick={() => patch((s) => ({ ...s, font: f }))} className={f === "serif" ? "font-serif" : ""}>{f === "serif" ? "Serif headings" : "Sans headings"}</Chip>
               ))}
             </div>
             <div>
@@ -80,6 +81,7 @@ export default function DesignPage() {
               <textarea id="sub" rows={3} value={store.heroSub} onChange={(e) => patch((s) => ({ ...s, heroSub: e.target.value }))} className="w-full rounded-md border border-border-input/60 p-3 text-sm outline-none focus:border-accent" />
             </div>
           </section>
+          <SectionsEditor store={store} />
         </div>
 
         <section aria-label="Live preview" className="overflow-hidden rounded-xl border border-border shadow-card">
