@@ -1,0 +1,30 @@
+feature,area,priority,original,clone,notes
+Full-screen vertical quote feed (one quote per swipe),feed,must,yes,yes,S01; endless for topics; ends with a page for personal lists
+Like a quote (heart and double tap),feed,must,yes,yes,double tap only ever likes
+Share a quote,feed,must,yes,yes,phone: share sheet; web: share sheet or clipboard (tested)
+Pick a category for the feed,categories,must,yes,yes,S03; 11 topics plus All / Favorites / Your quotes / Recently read
+Favorites list,library,must,yes,yes,S07
+Themes: pick a background and font,themes,must,yes,yes,S04; 16 built-in themes all WCAG AA
+Daily reminders with a quote (count and time window),reminders,must,yes,partial,S09; scheduling written against expo-notifications SDK 58 but not run on a device in this session (web has no notifications)
+Onboarding (name goals reminders theme),onboarding,must,yes,yes,S02
+Settings survive restarts (stored on device),platform,must,yes,yes,AsyncStorage; tested with reload
+Mix several categories into one feed,categories,should,yes,yes,
+Search quotes,categories,should,yes,yes,text and author
+Write and edit your own quotes,library,should,yes,yes,S08; 280 character limit
+History of seen quotes,library,should,yes,yes,S10; capped at 500
+Custom theme editor (background font colour size),themes,should,yes,yes,S05; warns on low contrast
+Share as an image of the themed quote,feed,should,yes,partial,captures the card with react-native-view-shot on phones; untested on a device; web shares text
+Reminder category choice,reminders,should,yes,partial,UI done; delivery untested on a device
+Personalised with the user's name,onboarding,should,yes,yes,greeting page on launch
+Home-screen widget,widgets,should,yes,no,needs a native WidgetKit target and a development build
+Widget customisation from inside the app,widgets,should,yes,no,depends on the widget
+Lock-screen widget,widgets,could,yes,no,
+Photo backgrounds,themes,could,yes,no,needs licensed or original photography
+Change app icon,settings,could,yes,no,
+Quote counter / reading progress,feed,could,yes,no,
+Multiple languages,platform,could,yes,no,
+Premium subscription,payments,should,yes,skip,needs StoreKit or RevenueCat and the user's own App Store Connect products (replica-backend)
+Ads on the free tier,payments,could,yes,skip,a business choice; not part of the core loop
+Their quote library,content,must,yes,skip,content they own; the clone ships its own public-domain and original set
+Slack integration,integrations,could,yes,skip,their separate product
+Apple Watch app,platform,could,yes,skip,separate native target

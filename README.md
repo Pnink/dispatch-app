@@ -17,3 +17,8 @@ npm start
 - Type a message, hit Enter, get a response below the input.
 
 Closing the window just hides it — quit via the tray menu's "Quit" item.
+
+## Also in this repo
+
+- [`quotidian/`](quotidian/) — a quotes app (Expo / React Native) built with the Replica skill pack.
+- [`.claude/skills/`](.claude/skills/) — the [Replica](https://github.com/Jakeschincariol/replica-skill) skills (MIT), installed for this project.

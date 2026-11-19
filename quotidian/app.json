@@ -1,0 +1,51 @@
+{
+  "expo": {
+    "name": "Quotidian",
+    "slug": "quotidian",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "dark",
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.example.quotidian"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#efe8dc",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "predictiveBackGestureEnabled": false,
+      "package": "com.example.quotidian"
+    },
+    "web": {
+      "favicon": "./assets/favicon.png",
+      "output": "single",
+      "bundler": "metro"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-font",
+      "expo-sharing",
+      [
+        "expo-splash-screen",
+        {
+          "backgroundColor": "#0c0c0e",
+          "image": "./assets/splash-icon.png",
+          "imageWidth": 120
+        }
+      ],
+      [
+        "expo-notifications",
+        {}
+      ]
+    ],
+    "scheme": "quotidian",
+    "backgroundColor": "#0c0c0e",
+    "experiments": {
+      "typedRoutes": false
+    }
+  }
+}
