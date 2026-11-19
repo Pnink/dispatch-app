@@ -25,7 +25,9 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
   const store = useCurrentStore();
   const [chatOpen, setChatOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
-  useEffect(() => setMounted(true), []);
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
     setChatOpen(window.matchMedia("(min-width: 1280px)").matches);
@@ -121,7 +123,9 @@ function AssistantPanel({ onClose }: { onClose: () => void }) {
   const [thinking, setThinking] = useState(false);
   const endRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => endRef.current?.scrollIntoView({ behavior: "smooth" }), [msgs, thinking]);
+  useEffect(() => {
+    endRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [msgs, thinking]);
 
   const send = (text: string) => {
     if (!text.trim() || thinking) return;

@@ -14,7 +14,9 @@ export default function StoreLayout({ children }: { children: React.ReactNode })
   const cart = useCart(slug);
   const pathname = usePathname();
   const [mounted, setMounted] = useState(false);
-  useEffect(() => setMounted(true), []);
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   if (!mounted) return <div className="min-h-dvh" />;
   if (!store)

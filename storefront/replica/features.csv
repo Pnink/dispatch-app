@@ -1,36 +1,36 @@
 feature,area,priority,original,clone,notes
-Marketing home with prompt box and category chips,marketing,must,yes,no,
-Pricing page with monthly/yearly toggle and 4 plans,marketing,must,yes,no,
-FAQ with categories and accordion,marketing,must,yes,no,
-About page,marketing,must,yes,no,
-Examples gallery with category filter,marketing,should,yes,no,
-Describe a store in one sentence -> generated storefront,onboarding,must,yes,no,
-Category quick-start chips,onboarding,must,yes,no,
-Optional reference image on prompt,onboarding,could,yes,no,
-Review step before going live,onboarding,must,yes,no,
-AI names brand and creates ~3 products with copy and images,ai,must,yes,no,
-AI business assistant chat in admin,ai,must,yes,no,
-AI restyle storefront from a description,ai,should,yes,no,
-AI product draft from a name,ai,should,yes,no,
-Dashboard KPIs and recent orders,dashboard,must,yes,no,
-Product list add edit delete with stock,products,must,yes,no,
-Variants per product,products,should,yes,no,
-Orders list with fulfil and refund,orders,must,yes,no,
-Built-in reviews toggle,apps,must,yes,no,
-Built-in popup toggle,apps,must,yes,no,
-Built-in email flows toggle,apps,must,yes,no,
-Built-in loyalty toggle,apps,must,yes,no,
-Email flow previews,email,should,yes,no,
-Customer storefront home,storefront,must,yes,no,
-Product detail page,storefront,must,yes,no,
-Cart,storefront,must,yes,no,
-Guest checkout with mocked payment,checkout,must,yes,no,
-Order confirmation,checkout,must,yes,no,
-Free-shipping threshold bar,checkout,could,yes,no,
-Discount codes,marketing,should,yes,no,
-A/B testing,growth,could,yes,no,
-SEO meta per product,seo,could,yes,no,
-Analytics dashboard,analytics,should,yes,no,
+Marketing home with prompt box and category chips,marketing,must,yes,yes,
+Pricing page with monthly/yearly toggle and 4 plans,marketing,must,yes,yes,own plan names and prices
+FAQ with categories and accordion,marketing,must,yes,yes,"10 categories, ~38 Qs, contact form (not sent)"
+About page,marketing,must,yes,yes,neutral demo story; no founders/backers
+Examples gallery with category filter,marketing,should,yes,yes,12 examples rendered live by the generator
+Describe a store in one sentence -> generated storefront,onboarding,must,yes,yes,"rules-based fake AI, deterministic"
+Category quick-start chips,onboarding,must,yes,yes,
+Optional reference image on prompt,onboarding,could,yes,partial,image is previewed but not used by the generator
+Review step before going live,onboarding,must,yes,yes,"rename, palette, products, live preview, start over"
+AI names brand and creates ~3 products with copy and images,ai,must,yes,yes,SVG product art instead of photos
+AI business assistant chat in admin,ai,must,yes,yes,propose-then-approve actions; rules-based intents
+AI restyle storefront from a description,ai,should,yes,yes,"colour words, darker/lighter, new headline"
+AI product draft from a name,ai,should,yes,yes,
+Dashboard KPIs and recent orders,dashboard,must,yes,yes,7-day revenue chart + setup guide
+Product list add edit delete with stock,products,must,yes,yes,
+Variants per product,products,should,yes,partial,single option list; no per-variant price/stock/SKU
+Orders list with fulfil and refund,orders,must,yes,yes,refund restocks
+Built-in reviews toggle,apps,must,yes,yes,shopper can post reviews
+Built-in popup toggle,apps,must,yes,yes,editable headline/code/percent
+Built-in email flows toggle,apps,must,yes,yes,"previews only, nothing sent"
+Built-in loyalty toggle,apps,must,yes,yes,1 pt per $; shown on confirmation
+Email flow previews,email,should,yes,yes,
+Customer storefront home,storefront,must,yes,yes,
+Product detail page,storefront,must,yes,yes,
+Cart,storefront,must,yes,yes,
+Guest checkout with mocked payment,checkout,must,yes,yes,test cards; wallets simulated
+Order confirmation,checkout,must,yes,yes,
+Free-shipping threshold bar,checkout,could,yes,yes,
+Discount codes,marketing,should,yes,yes,settings + assistant + popup code
+A/B testing,growth,could,yes,no,marketing mock only
+SEO meta per product,seo,could,yes,partial,editable SEO title; no meta description/sitemap
+Analytics dashboard,analytics,should,yes,partial,KPIs + 7-day chart only
 Custom domains and SSL,hosting,could,yes,skip,needs real DNS/hosting; out of scope for a demo
 Real payment processing (125+ methods),checkout,could,yes,skip,mocked by design; no keys
 Shipping carriers labels and 3PL,shipping,could,yes,skip,needs carrier accounts

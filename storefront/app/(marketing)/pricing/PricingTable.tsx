@@ -58,7 +58,7 @@ export function PricingTable() {
             <div key={p.name} className={cx("relative flex flex-col rounded-xl border p-6", p.featured ? "border-ink bg-ink text-on-ink shadow-pop" : "border-border bg-bg")}>
               {p.featured && <span className="absolute -top-3 left-6 rounded-full bg-accent px-3 py-1 text-xs font-medium text-on-accent">Most popular</span>}
               <h2 className="text-lg font-semibold">{p.name}</h2>
-              <p className={cx("mt-1 text-sm", sub)}>{p.blurb}</p>
+              <p className={cx("mt-1 min-h-10 text-sm", sub)}>{p.blurb}</p>
               <div className="mt-6 flex items-baseline gap-1">
                 {price === null ? (
                   <span className="text-4xl font-semibold">Custom</span>
@@ -70,7 +70,7 @@ export function PricingTable() {
                 )}
               </div>
               <p className={cx("mt-1 h-4 text-xs", sub)}>{price !== null && (yearly ? `Billed yearly — save $${saving}` : "Billed monthly")}</p>
-              <p className={cx("mt-4 rounded-md px-3 py-2 text-xs", p.featured ? "bg-white/10" : "bg-surface")}>{p.credits}</p>
+              <p className={cx("mt-4 min-h-12 rounded-md px-3 py-2 text-xs", p.featured ? "bg-white/10" : "bg-surface")}>{p.credits}</p>
               <LinkButton href={p.href} variant={p.featured ? "accent" : "secondary"} className="mt-5 w-full">
                 {p.cta}
               </LinkButton>
