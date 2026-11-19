@@ -86,3 +86,27 @@ export async function updateStoreOnServer<T>(slug: string, fn: (s: Store) => Pro
     return { ok: true as const, result: out.result };
   });
 }
+
+// ---------- owner settings (DATA_DIR/settings.json) ----------
+export type Settings = { aiModel: string };
+const SETTINGS = path.join(DIR, "settings.json");
+const DEFAULT_SETTINGS: Settings = { aiModel: "builtin" };
+
+export async function readSettings(): Promise<Settings> {
+  try {
+    return { ...DEFAULT_SETTINGS, ...JSON.parse(await fs.readFile(SETTINGS, "utf8")) };
+  } catch {
+    return DEFAULT_SETTINGS;
+  }
+}
+
+export async function writeSettings(patch: Partial<Settings>): Promise<Settings> {
+  return serial(async () => {
+    const next = { ...(await readSettings()), ...patch };
+    await fs.mkdir(DIR, { recursive: true, mode: 0o700 });
+    const tmp = `${SETTINGS}.${process.pid}.tmp`;
+    await fs.writeFile(tmp, JSON.stringify(next, null, 1), { mode: 0o600 });
+    await fs.rename(tmp, SETTINGS);
+    return next;
+  });
+}

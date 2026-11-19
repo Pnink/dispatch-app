@@ -99,7 +99,7 @@ const DATA_DIR = process.env.DATA_DIR;
   const sp = await shopper.newPage();
   collectErrors(sp, errors);
   const html0 = await (await fetch(`${B}/store/${slug}`)).text();
-  assert(!/tillery/i.test(html0), "server HTML of a storefront must not mention the platform");
+  assert(!/kovaz/i.test(html0), "server HTML of a storefront must not mention the platform");
   const pub = await (await fetch(`${B}/api/public/stores/${slug}`)).json();
   assert(!("orders" in pub) && !("subscribers" in pub) && !("loyalty" in pub) && !("flows" in pub) && pub.discounts.length === 0, "public data must not include orders, customers, email list or discount codes");
   for (const p of ["", "/cart"]) {
@@ -107,7 +107,7 @@ const DATA_DIR = process.env.DATA_DIR;
     await sp.waitForTimeout(600);
     await sp.keyboard.press("Escape");
     const text = await sp.locator("body").innerText();
-    assert(!/tillery|powered by|owner view/i.test(text), `storefront${p} shows platform text`);
+    assert(!/kovaz|powered by|owner view/i.test(text), `storefront${p} shows platform text`);
   }
   await sp.goto(`${B}/store/${slug}`);
   await sp.getByText("Studio sale this weekend").waitFor();
@@ -116,7 +116,7 @@ const DATA_DIR = process.env.DATA_DIR;
   const icon = await sp.locator("link[rel='icon']").getAttribute("href");
   assert(icon && icon.startsWith("data:image/svg+xml"), "store favicon should be set");
   const keys = await sp.evaluate(() => Object.keys(localStorage).join(" "));
-  assert(!/tillery/i.test(keys), "shopper-visible storage keys must not name the platform");
+  assert(!/kovaz/i.test(keys), "shopper-visible storage keys must not name the platform");
   if (OUT) await sp.screenshot({ path: `${OUT}/W04-storefront-shopper.png`, fullPage: true });
   ok("storefront is white-label (HTML, page text, title, favicon, storage keys) and public data is private-safe");
 
@@ -135,7 +135,7 @@ const DATA_DIR = process.env.DATA_DIR;
   const [dl] = await Promise.all([page.waitForEvent("download"), page.getByRole("button", { name: /Full backup/ }).click()]);
   const file = await dl.path();
   const backup = JSON.parse(fs.readFileSync(file, "utf8"));
-  assert(backup.format === "tillery-backup" && backup.stores.length >= 1, "backup format");
+  assert(backup.format === "kovaz-backup" && backup.stores.length >= 1, "backup format");
   const [csv] = await Promise.all([page.waitForEvent("download"), page.getByRole("button", { name: "Orders CSV" }).click()]);
   assert(fs.readFileSync(await csv.path(), "utf8").startsWith("number,date,status"), "orders csv header");
   await page.getByLabel("Store name").fill("Wiped");

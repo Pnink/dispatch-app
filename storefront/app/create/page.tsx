@@ -5,6 +5,8 @@ import Link from "next/link";
 import { ArrowLeft, Check, ImagePlus, Loader2, RefreshCw, Sparkles, X } from "lucide-react";
 import { CATEGORY_CHIPS, detectCategory, generationSteps } from "@/lib/ai";
 import { createStore, deleteStore, updateStore, useStore } from "@/lib/store";
+import { ensureAiSettings, generateWithAi } from "@/lib/ai-client";
+import { applyGenerated } from "@/lib/ai-actions";
 import type { Category } from "@/lib/types";
 import { Logo } from "@/components/Logo";
 import { Button, Chip } from "@/components/ui";
@@ -31,6 +33,7 @@ function Create() {
   const [step, setStep] = useState(0);
   const [slug, setSlug] = useState<string>();
   const [error, setError] = useState("");
+  const [aiNote, setAiNote] = useState("");
   const started = useRef(false);
 
   // Auto-start when arriving from the homepage prompt box.
@@ -51,16 +54,23 @@ function Create() {
     setPhase("generating");
     setStep(0);
     const steps = generationSteps(cat ?? detectCategory(text)).length;
+    // with a real model selected, ask it to write the store while the steps animate
+    const aiPromise = ensureAiSettings().then((st) => (st && st.aiModel !== "builtin" ? generateWithAi(text.trim(), cat) : null));
     let i = 0;
     const tick = setInterval(() => {
-      i++;
-      setStep(i);
-      if (i >= steps) {
-        clearInterval(tick);
-        const s = createStore(text.trim(), cat);
+      if (i < steps - 1) {
+        i++;
+        setStep(i);
+        return;
+      }
+      clearInterval(tick);
+      aiPromise.then((r) => {
+        setStep(steps);
+        const s = createStore(text.trim(), cat, r && r.ok ? (b) => applyGenerated(b, r.store) : undefined);
+        setAiNote(r ? (r.ok ? `Written by ${r.label}` : `AI model unavailable (${r.error}) — used the built-in generator instead.`) : "");
         setSlug(s.slug);
         setTimeout(() => setPhase("review"), 350);
-      }
+      });
     }, 650);
   }
 
@@ -167,6 +177,7 @@ function Create() {
       {phase === "review" && slug && (
         <Review
           slug={slug}
+          aiNote={aiNote}
           onRetry={() => {
             deleteStore(slug);
             setSlug(undefined);
@@ -182,7 +193,7 @@ function Create() {
   );
 }
 
-function Review({ slug, onRetry, onPublish }: { slug: string; onRetry: () => void; onPublish: () => void }) {
+function Review({ slug, aiNote, onRetry, onPublish }: { slug: string; aiNote: string; onRetry: () => void; onPublish: () => void }) {
   const store = useStore(slug);
   if (!store) return null;
   return (
@@ -190,6 +201,7 @@ function Review({ slug, onRetry, onPublish }: { slug: string; onRetry: () => voi
       <aside className="space-y-5">
         <div className="rounded-xl border border-border bg-bg p-5">
           <div className="flex items-center gap-2 text-sm text-success"><Check className="h-4 w-4" /> Your store is ready to review</div>
+          {aiNote && <p className={`mt-1 text-xs ${aiNote.startsWith("Written") ? "text-muted" : "text-buoy"}`} data-ai-note>{aiNote}</p>}
           <label htmlFor="store-name" className="mt-4 block text-xs text-muted">Store name</label>
           <input
             id="store-name"

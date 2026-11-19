@@ -1,14 +1,13 @@
 import Link from "next/link";
 import { BRAND } from "@/lib/brand";
 
-/** Tillery mark: a till drawer seen from the front — a counter line over an open drawer with a coin slot. Draft art. */
+/** Kovaz mark: a geometric K — an upright stroke with an arrow-like arm, read as "up and onward". Draft art. */
 export function LogoMark({ className = "h-7 w-7" }: { className?: string }) {
   return (
     <svg viewBox="0 0 32 32" className={className} aria-hidden="true">
       <rect width="32" height="32" rx="9" className="fill-accent" />
-      <rect x="6" y="8.5" width="20" height="3" rx="1.5" className="fill-on-accent" />
-      <path d="M8 14h16l-1.6 9.5H9.6z" className="fill-on-accent" />
-      <rect x="13" y="17" width="6" height="2.2" rx="1.1" className="fill-accent" />
+      <rect x="9" y="7.5" width="4" height="17" rx="2" className="fill-on-accent" />
+      <path d="M14.5 16 22 8.5h-5.2L12.6 14v4l4.2 5.5H22z" className="fill-on-accent" />
     </svg>
   );
 }

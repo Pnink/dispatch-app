@@ -16,6 +16,7 @@ This app holds your orders and your customers' names, addresses and emails. Here
 | Clickjacking, injected scripts, sniffing | Strict Content-Security-Policy (no outside scripts, no framing), `X-Frame-Options: DENY`, `nosniff`, `Referrer-Policy`, `Permissions-Policy`, HSTS. The framework isn't advertised. |
 | Spreadsheet formula injection | Customer-entered text in CSV exports is neutralised. |
 | Lost work or a corrupt file | Atomic saves (write, then rename). Saves are queued, so they never interleave, and a stale save gets a conflict instead of overwriting newer data. A timestamped backup is written every 10 minutes, and the newest 50 are kept. |
+| Leaked AI keys | `ANTHROPIC_API_KEY` / `OPENAI_API_KEY` live only in `.env.local` on the server. The AI route is owner-only, rate-limited (30 calls a minute) and never returns the keys. Set a monthly spend limit in each provider's console. |
 | Card data theft | In the real version, card numbers go straight to Stripe's hosted page and never touch this server. (The demo checkout still posts test numbers to it — see below.) |
 
 ## Before you put it online

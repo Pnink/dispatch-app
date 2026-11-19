@@ -24,7 +24,7 @@ function b64url(buf: ArrayBuffer) {
 }
 
 async function key() {
-  const secret = process.env.SESSION_SECRET || `tillery-session:${process.env.OWNER_PASSWORD ?? ""}`;
+  const secret = process.env.SESSION_SECRET || `owner-session:${process.env.OWNER_PASSWORD ?? ""}`;
   return crypto.subtle.importKey("raw", enc.encode(secret), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
 }
 

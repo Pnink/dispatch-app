@@ -211,8 +211,10 @@ export function updateStore(slug: string, fn: (s: Store) => Store) {
   change((db) => ({ stores: db.stores.map((s) => (s.slug === slug ? fn(s) : s)) }));
 }
 
-export function createStore(prompt: string, category?: Category): Store {
-  const store = generateStore(prompt, category, state.db.stores.map((s) => s.slug));
+/** transform: optional rewrite of the generated store (e.g. copy written by an AI model). */
+export function createStore(prompt: string, category?: Category, transform?: (s: Store) => Store): Store {
+  const base = generateStore(prompt, category, state.db.stores.map((s) => s.slug));
+  const store = transform ? { ...transform(base), slug: base.slug } : base;
   change((db) => ({ stores: [store, ...db.stores.filter((s) => s.slug !== store.slug)] }));
   setCurrentStore(store.slug);
   return store;
@@ -412,11 +414,12 @@ function download(name: string, text: string, type: string) {
 }
 
 const stamp = () => new Date().toISOString().slice(0, 10);
-const BACKUP_FORMAT = "tillery-backup";
+const BACKUP_FORMAT = "kovaz-backup";
+const OLD_BACKUP_FORMATS = ["tillery-backup"]; // backups made before the rename still restore
 
 /** Everything: all stores, products, orders, experiments, settings. */
 export function downloadBackup() {
-  download(`tillery-backup-${stamp()}.json`, JSON.stringify({ format: BACKUP_FORMAT, version: 1, exportedAt: new Date().toISOString(), stores: state.db.stores }, null, 2), "application/json");
+  download(`kovaz-backup-${stamp()}.json`, JSON.stringify({ format: BACKUP_FORMAT, version: 1, exportedAt: new Date().toISOString(), stores: state.db.stores }, null, 2), "application/json");
 }
 
 /** Replace all data with a backup file's contents. Returns an error message, or null on success. */
@@ -428,7 +431,7 @@ export function restoreBackup(text: string): string | null {
     return "That file isn't valid JSON.";
   }
   const p = parsed as { format?: string; stores?: unknown };
-  if (p.format !== BACKUP_FORMAT || !Array.isArray(p.stores)) return "That doesn't look like a backup from this app.";
+  if (!(p.format === BACKUP_FORMAT || OLD_BACKUP_FORMATS.includes(p.format ?? "")) || !Array.isArray(p.stores)) return "That doesn't look like a backup from this app.";
   const stores = (p.stores as Store[]).map(withDefaults);
   if (stores.some((s) => !s.slug || !s.name || !Array.isArray(s.products))) return "The backup is missing store data.";
   change(() => ({ stores }));

@@ -24,7 +24,7 @@ const OUT = process.argv[2];
 
   // no sample store: first run asks for one
   await page.goto(B + "/dashboard");
-  await page.getByRole("heading", { name: /Welcome to tillery/ }).waitFor();
+  await page.getByRole("heading", { name: /Welcome to kovaz/ }).waitFor();
   await shot("S00-first-run", false);
   ok("first run is empty (no sample store)");
 

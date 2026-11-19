@@ -4,6 +4,9 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { AlertTriangle, Blocks, Bot, Check, CloudOff, ExternalLink, FlaskConical, Home, Keyboard, Loader2, LogOut, Mail, Package, Palette, Plus, Send, Settings, ShoppingCart, Sparkles, X } from "lucide-react";
 import { assistant, type AssistantAction } from "@/lib/ai";
+import { askAssistant, useAiSettings } from "@/lib/ai-client";
+import { toAssistantAction } from "@/lib/ai-actions";
+import { findModel } from "@/lib/ai-models";
 import { markOwner, saveNow, setCurrentStore, updateStore, useAdmin, useCurrentStore, type SaveState } from "@/lib/store";
 import { CommandPalette, useCommandPalette } from "./CommandPalette";
 import { LogoMark } from "@/components/Logo";
@@ -237,7 +240,7 @@ function FirstRun() {
   );
 }
 
-type Msg = { role: "user" | "assistant"; text: string; action?: AssistantAction; done?: "applied" | "dismissed" };
+type Msg = { role: "user" | "assistant"; text: string; action?: AssistantAction; done?: "applied" | "dismissed"; by?: string; error?: boolean };
 
 function AssistantPanel({ onClose }: { onClose: () => void }) {
   const store = useCurrentStore()!;
@@ -256,16 +259,32 @@ function AssistantPanel({ onClose }: { onClose: () => void }) {
     if (el) el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
   }, [msgs, thinking]);
 
-  const send = (text: string) => {
+  const ai = useAiSettings();
+  const model = ai?.aiModel ?? "builtin";
+  const modelLabel = model === "builtin" ? "Built-in rules" : (findModel(model)?.label ?? model);
+
+  const send = async (text: string) => {
     if (!text.trim() || thinking) return;
-    setMsgs((m) => [...m, { role: "user", text }]);
+    const next: Msg[] = [...msgs, { role: "user", text }];
+    setMsgs(next);
     setInput("");
     setThinking(true);
-    setTimeout(() => {
+    if (model === "builtin") {
+      await new Promise((r) => setTimeout(r, 400));
       const r = assistant(text, store, page.toLowerCase());
-      setMsgs((m) => [...m, { role: "assistant", text: r.text, action: r.action }]);
-      setThinking(false);
-    }, 600);
+      setMsgs((m) => [...m, { role: "assistant", text: r.text, action: r.action, by: "Built-in rules" }]);
+    } else {
+      const history = next.filter((m) => !m.error).map((m) => ({ role: m.role, content: m.text }));
+      const r = await askAssistant(store, page.toLowerCase(), history.slice(1)); // skip the greeting
+      if (r.ok) {
+        setMsgs((m) => [...m, { role: "assistant", text: r.data.reply, action: toAssistantAction(r.data.action, store), by: r.label }]);
+      } else {
+        // fall back to the built-in rules so the owner still gets an answer
+        const fb = assistant(text, store, page.toLowerCase());
+        setMsgs((m) => [...m, { role: "assistant", text: `⚠ ${r.error}`, error: true }, { role: "assistant", text: fb.text, action: fb.action, by: "Built-in rules (fallback)" }]);
+      }
+    }
+    setThinking(false);
   };
 
   const resolve = (i: number, apply: boolean) => {
@@ -297,6 +316,7 @@ function AssistantPanel({ onClose }: { onClose: () => void }) {
                   </div>
                 )}
                 {m.done && <div className={cx("mt-2 text-xs", m.done === "applied" ? "text-success" : "text-muted")}>{m.done === "applied" ? "✓ Done" : "Dismissed"}</div>}
+                {m.by && <div className="mt-1.5 text-[10px] uppercase tracking-wide text-muted">{m.by}</div>}
               </div>
             )}
           </div>
@@ -318,7 +338,10 @@ function AssistantPanel({ onClose }: { onClose: () => void }) {
           <input id="assistant-input" value={input} onChange={(e) => setInput(e.target.value)} placeholder="Ask or tell it to do something…" className="h-10 flex-1 rounded-md border border-border-input/60 px-3 text-sm outline-none focus:border-accent" />
           <button type="submit" aria-label="Send" disabled={!input.trim()} className="grid h-10 w-10 place-items-center rounded-md bg-ink text-on-ink disabled:opacity-30"><Send className="h-4 w-4" /></button>
         </form>
-        <p className="mt-2 text-[11px] text-muted">Demo assistant — rules-based, no AI model is called.</p>
+        <p className="mt-2 text-[11px] text-muted">
+          Model: <Link href="/dashboard/settings#ai" className="underline">{modelLabel}</Link>
+          {model === "builtin" ? " · free, offline" : " · billed per use by the provider"}
+        </p>
       </div>
     </aside>
   );

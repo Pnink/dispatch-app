@@ -1,17 +1,17 @@
-# Brand: Tillery
+# Brand: Kovaz
 
 ## Name
 
-**Tillery** — from *till* (a shop's cash register) + *-ery* (a place where something is made: bakery, winery). A place where
-shops are made and run. Short, easy to say and spell. Not similar to Amboras. Replaced "Wharf" at the owner's request.
+**Kovaz** — a made-up word picked by the owner: short, distinctive, easy to say. Not similar to Amboras.
+History: Forgecart (placeholder) → Wharf → Tillery → Kovaz. Backups made under the Tillery name still restore.
 
-| check | Tillery |
+| check | Kovaz |
 | --- | --- |
 | US trademark (USPTO, classes 9/42/35) | to run |
 | EU trademark (EUIPO/TMview) | to run |
 | domain | to run |
 | handles | to run |
-| web search "Tillery ecommerce" | to run |
+| web search "Kovaz ecommerce" | to run |
 
 For private use the name only appears in the owner app and platform site — never on a storefront, in its storage keys or its
 session cookie. To rename: `lib/brand.ts` + the mark in `components/Logo.tsx`.
@@ -24,8 +24,8 @@ The original's colours were never observed (text-only recon), so there is nothin
 
 ## Logo brief
 
-- Idea: a till seen from the front — counter line over an open cash drawer with a coin slot.
-- Mark: symbol in a rounded square + wordmark "tillery" in a heavy grotesk, lowercase.
+- Idea: a geometric K — an upright stroke with an arrow-like arm, "up and onward".
+- Mark: symbol in a rounded square + wordmark "kovaz" in a heavy grotesk, lowercase.
 - Works at 16px (symbol only). Current SVG in `components/Logo.tsx` is a working draft, not final art.
 - Must not resemble any commerce platform's bag/cart mark.
 

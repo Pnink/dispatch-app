@@ -1,6 +1,6 @@
 @import "tailwindcss";
 
-/* Tillery design tokens (see replica/design/tokens.json) */
+/* Kovaz design tokens (see replica/design/tokens.json) */
 @theme {
   --color-bg: #fbfaf7;
   --color-surface: #f2efe8;

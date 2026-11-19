@@ -1,4 +1,4 @@
-# tillery
+# kovaz
 
 Your shop's back office, built for the desktop. Describe a shop in one sentence, review what it generates, publish it, and run it from a keyboard-friendly dashboard that tells you what to do next.
 
@@ -72,14 +72,31 @@ See **[SECURITY.md](SECURITY.md)** for what's built in, the checklist before goi
 - **With `OWNER_PASSWORD` set** (in `.env.local`): sign-in is required, and `npm run start:public` refuses to start without it.
 - **The server checks every price, stock level and discount code** itself.
 
-## Using real AI models
+## AI models
 
-The assistant and store generator currently use built-in rules: free, and no API key. To use Claude instead you'd need an API key from the Claude Console. It's billed per use, separately from any Claude.ai subscription. At current list prices, Claude Opus 5.5 costs $4 per million input tokens and $20 per million output tokens. That works out to roughly:
-- about 2¢ per assistant reply
-- about 5–10¢ per generated store
-- about $5–15 a month for daily use
+Pick the model in **Settings → AI model**. The assistant and the store generator use your choice. The default is the free built-in rules (no key needed).
 
-Claude Haiku 5.5 ($0.10 / $0.50 per million tokens) costs well under a cent per reply, for simpler answers. The swap is contained in `lib/ai.ts`.
+- **Claude (Anthropic):** Fable 5.2 / 5.1 / 5, Mythos 5.2 / 5.1 (verified organizations only), Opus 5.5 / 5 / 4.8 / 4.7 / 4.6, Sonnet 5.5 / 5 / 4.6, Haiku 5.5 / 4.5.
+- **ChatGPT models (OpenAI):** GPT-6.2 Astra, GPT-6 Astra, GPT-6.2 Sol, GPT-6.1 Sol, GPT-6.1 Terra, GPT-6 Luna.
+- **Your own accounts:** the picker also lists any other model your keys can use, read live from each provider.
+
+To turn a provider on, put its key in `storefront/.env.local` and restart. The keys stay on the server and are never sent to the browser.
+
+```
+ANTHROPIC_API_KEY=...   # console.anthropic.com
+OPENAI_API_KEY=...      # platform.openai.com
+```
+
+**Paying for it:** both providers bill per use, separately from any ChatGPT or Claude.ai subscription. The picker shows each model's price and a rough cost per reply. For example:
+- Claude Opus 5.5 is about 2¢ a reply.
+- Claude Haiku 5.5 and GPT-6 Luna are under 0.1¢ a reply.
+- Fable 5.2 and GPT-6.2 Astra are about 5¢ a reply.
+
+The Terra and Luna prices come from third-party trackers and are marked "unverified".
+
+**How the models are kept in check:** a model can only *propose* one change from a fixed list (discount, product, colour, theme, headline, restock, app switch, refund, publish, headline test), and you approve it. If a model call fails, the built-in rules answer instead. Customer names, emails and addresses are never sent to a model.
+
+**Tested vs. not yet tested:** `npm run e2e` tests the whole AI flow against a fake provider (`AI_FAKE=1`), so tests never spend money. Real Claude and OpenAI calls haven't been made from here, because no keys were available. The OpenAI code uses the standard Chat Completions call with JSON-schema output; check it on your first real request.
 
 ## Going live
 

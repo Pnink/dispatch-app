@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { Download, Trash2, Upload } from "lucide-react";
 import { deleteStore, downloadBackup, downloadCsv, eraseEverything, restoreBackup, updateStore, useCurrentStore } from "@/lib/store";
 import { PageHeader, Panel } from "@/components/dashboard/PageHeader";
+import { AiModelPanel } from "@/components/dashboard/AiModelPanel";
 import { Button, Field, Toggle } from "@/components/ui";
 
 export default function SettingsPage() {
@@ -28,7 +29,9 @@ export default function SettingsPage() {
   return (
     <>
       <PageHeader title="Settings" />
-      <div className="max-w-3xl space-y-6">
+      <div className="max-w-5xl space-y-6">
+        <AiModelPanel />
+
         <Panel title="Store">
           <div className="space-y-4 p-5">
             <Field label="Store name" name="name" value={store.name} onChange={(e) => updateStore(store.slug, (s) => ({ ...s, name: e.target.value }))} />
