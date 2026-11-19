@@ -1,6 +1,6 @@
 {
-  "name": "Wharf",
-  "avoid": ["Amboras", "Forgecart"],
+  "name": "Tillery",
+  "avoid": ["Amboras", "Forgecart", "Wharf"],
   "domains": ["amboras.com", "forgecart.demo"],
   "colors": ["#4338ca", "#eef0fb"]
 }

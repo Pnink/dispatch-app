@@ -2,7 +2,8 @@
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { Minus, Plus, Trash2 } from "lucide-react";
-import { cartTotals, useCart, useShopperStore, writeCart } from "@/lib/store";
+import { useCart, useShopperStore, writeCart } from "@/lib/store";
+import { cartTotals } from "@/lib/commerce";
 import { money, cx } from "@/lib/format";
 import { ProductArt } from "@/components/ProductArt";
 import { headingFont } from "@/components/storefront";

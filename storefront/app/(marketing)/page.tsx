@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { AlertCircle, ArrowRight, Blocks, Bot, Check, Database, EyeOff, FlaskConical, LayoutList, Lightbulb, Sparkles } from "lucide-react";
+import { AlertCircle, ArrowRight, Blocks, Bot, Check, Database, EyeOff, FlaskConical, Keyboard, LayoutList, Lightbulb, Sparkles } from "lucide-react";
 import { PromptBox } from "@/components/PromptBox";
 import { ProductArt } from "@/components/ProductArt";
 import type { Category } from "@/lib/types";
@@ -13,12 +13,12 @@ export default function Home() {
         <div className="relative mx-auto grid max-w-6xl items-center gap-12 px-4 pb-20 pt-16 sm:px-6 lg:grid-cols-[1.1fr_1fr] lg:pt-24">
           <div>
             <p className="inline-flex items-center gap-2 rounded-full border border-border bg-bg px-3 py-1 text-xs text-muted">
-              <span className="h-1.5 w-1.5 rounded-full bg-accent" /> Private build · every feature on · $0 a month
+              <span className="h-1.5 w-1.5 rounded-full bg-accent" /> Built for your desktop · saves as you go · $0 a month
             </p>
             <h1 className="mt-5 font-display text-5xl leading-[1.02] sm:text-7xl">Stop renting your store.</h1>
             <p className="mt-6 max-w-lg text-lg text-muted">
-              Describe what you sell. Get a finished storefront in about a minute, then run it from one dashboard that tells you what to do next —
-              with no plan to pay for, no cut of your sales, and nothing on your shop that says who built it.
+              Your shop&apos;s back office, made for a big screen and a keyboard. Describe what you sell, get a finished storefront in about a minute,
+              then run it from a dashboard that tells you what to do next. Every change saves to your own computer the moment you make it.
             </p>
             <div className="mt-8 max-w-xl">
               <PromptBox />
@@ -75,8 +75,9 @@ export default function Home() {
             <Tile icon={Bot} title="An assistant that acts" body="Ask for a discount, a new product, a restyle or a refund. It proposes; you approve." />
             <Tile icon={FlaskConical} title="A/B tests on everything that sells" body="Headlines, prices, shipping thresholds, discounts. The winner rolls out by itself." />
             <Tile icon={Blocks} title="Apps already installed" body="Reviews, email capture, email flows and loyalty points. One switch each." />
-            <Tile icon={Database} title="Your data, any time" body="One-click full backup, plus orders, products and email list as CSV. No lock-in." />
-            <Tile className="md:col-span-3" icon={Sparkles} title="A homepage you arrange" body="Reorder and hide sections, edit the announcement bar, brand story and questions — or just describe the change. The preview updates as you type." />
+            <Tile icon={Database} title="Saved on your computer" body="Every change is written to disk as you work, with automatic backups every few minutes. Export everything as JSON or CSV any time." />
+            <Tile className="md:col-span-2" icon={Sparkles} title="A homepage you arrange" body="Reorder and hide sections, edit the announcement bar, brand story and questions — or just describe the change. The preview updates as you type." />
+            <Tile icon={Keyboard} title="Made for a keyboard" body="⌘K to jump anywhere, G-then-a-letter to switch pages, ⌘S if you like to save by hand. Press ? for the list." />
           </div>
         </div>
       </section>

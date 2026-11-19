@@ -32,3 +32,12 @@ Rebrand (2026-11-19): sweep with `replica/brand.json` is clean. Fixed along the 
 the assistant's auto-scroll scrolled the whole page; the 7-day chart drew no bars (percent heights in an auto-height flex item);
 an absolutely positioned sr-only table header escaped its scroll box and widened phone layouts. `e2e/owner-tools.cjs` covers
 the new features; all three suites pass with 0 console errors, and no page overflows at 390px.
+
+Rename + desktop + saving + security (2026-11-19): renamed to Tillery; no sample store (first run asks for one);
+desktop-first shell (save indicator, shortcuts, help sheet); file-backed server database with atomic writes, revision
+conflicts that re-apply pending edits, 10-minute backups; owner login (OWNER_PASSWORD), signed HttpOnly sessions, login
+lockout, CSRF origin checks, server-side pricing, public/private data split, input validation, rate limits, security headers.
+Found while testing: (1) a reload inside the 0.3s save delay dropped the last edit -> pagehide keepalive save;
+(2) Next.js always adds x-forwarded-* headers, and trusting x-forwarded-host would have let a spoofed header unlock the
+owner app -> rule is "Host local AND whole forwarding chain loopback", scripts bind 127.0.0.1, start:public needs a password.
+`npm run e2e` (5 suites incl. security + restart persistence) passes.

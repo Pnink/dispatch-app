@@ -1,22 +1,20 @@
-# Brand: Wharf
+# Brand: Tillery
 
 ## Name
 
-Picked **Wharf** — where goods come in and go out; short, concrete, easy to spell after hearing it once. Not similar to
-Amboras in sound, look or meaning.
+**Tillery** — from *till* (a shop's cash register) + *-ery* (a place where something is made: bakery, winery). A place where
+shops are made and run. Short, easy to say and spell. Not similar to Amboras. Replaced "Wharf" at the owner's request.
 
-Shortlist considered: Wharf, Tidewell, Brightstall, Stallwise, Quayside.
-
-| check | Wharf |
+| check | Tillery |
 | --- | --- |
 | US trademark (USPTO, classes 9/42/35) | to run |
 | EU trademark (EUIPO/TMview) | to run |
 | domain | to run |
 | handles | to run |
-| web search "Wharf ecommerce" | to run |
+| web search "Tillery ecommerce" | to run |
 
-These matter only if the app is ever offered to others. For private use the name is just the admin's label; it never
-appears on the storefront. To rename later, change `lib/brand.ts` (one line) plus the logo SVG.
+For private use the name only appears in the owner app and platform site — never on a storefront, in its storage keys or its
+session cookie. To rename: `lib/brand.ts` + the mark in `components/Logo.tsx`.
 
 ## Palette (tokens in `app/globals.css`, checked in `design/tokens.json`)
 
@@ -26,8 +24,8 @@ The original's colours were never observed (text-only recon), so there is nothin
 
 ## Logo brief
 
-- Idea: a pier seen from the side — a plank on two pilings above a wave line. "A place you dock and trade."
-- Mark: symbol in a rounded square + wordmark "wharf" in a heavy grotesk, lowercase.
+- Idea: a till seen from the front — counter line over an open cash drawer with a coin slot.
+- Mark: symbol in a rounded square + wordmark "tillery" in a heavy grotesk, lowercase.
 - Works at 16px (symbol only). Current SVG in `components/Logo.tsx` is a working draft, not final art.
 - Must not resemble any commerce platform's bag/cart mark.
 

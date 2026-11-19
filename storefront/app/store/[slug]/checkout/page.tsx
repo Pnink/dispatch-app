@@ -3,7 +3,8 @@ import Link from "next/link";
 import { useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { Lock } from "lucide-react";
-import { cartTotals, placeOrder, useCart, useShopperStore, writeCart } from "@/lib/store";
+import { placeOrder, quote, useCart, useShopperStore, writeCart, type Quote } from "@/lib/store";
+import { cartTotals } from "@/lib/commerce";
 import type { CardInput } from "@/lib/payments";
 import type { Customer } from "@/lib/types";
 import { money, cx } from "@/lib/format";
@@ -23,6 +24,7 @@ export default function CheckoutPage() {
   const [code, setCode] = useState("");
   const [applied, setApplied] = useState("");
   const [codeMsg, setCodeMsg] = useState("");
+  const [q, setQ] = useState<Quote | null>(null); // server-confirmed totals once a code is applied
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [payError, setPayError] = useState("");
   const [busy, setBusy] = useState(false);
@@ -30,7 +32,8 @@ export default function CheckoutPage() {
   if (!store) return null;
   const base = `/store/${store.slug}`;
   const lines = cart.filter((l) => store.products.some((p) => p.id === l.productId));
-  const t = cartTotals(store, lines, applied);
+  // the browser never knows discount codes; the server checks them and returns the totals it will charge
+  const t = applied && q ? q : cartTotals(store, lines);
 
   if (lines.length === 0)
     return (
@@ -162,14 +165,17 @@ export default function CheckoutPage() {
           className="mt-5 flex gap-2"
           onSubmit={(e) => {
             e.preventDefault();
-            const d = store.discounts.find((x) => x.code === code.trim().toUpperCase());
-            if (d) {
-              setApplied(d.code);
-              setCodeMsg(`${d.code} applied — ${d.percent}% off`);
-            } else {
-              setApplied("");
-              setCodeMsg("That code isn't valid.");
-            }
+            quote(store.slug, lines, code).then((res) => {
+              if (res?.code) {
+                setApplied(res.code.code);
+                setQ(res);
+                setCodeMsg(`${res.code.code} applied — ${res.code.percent}% off`);
+              } else {
+                setApplied("");
+                setQ(null);
+                setCodeMsg("That code isn't valid.");
+              }
+            });
           }}
         >
           <label htmlFor="discount" className="sr-only">Discount code</label>

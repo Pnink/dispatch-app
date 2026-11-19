@@ -1,17 +1,18 @@
 // A/B testing walkthrough. Server must be running on :3100.  Usage: node e2e/experiments.cjs [screenshotDir]
 const { chromium } = require("playwright");
+const { B, ok, assert, storeBySlug, waitSaved, createStore, collectErrors } = require("./helpers.cjs");
 const OUT = process.argv[2];
-const B = "http://localhost:3100";
-const ok = (s) => console.log("✓", s);
-const assert = (c, m) => { if (!c) throw new Error(m); };
 
 (async () => {
   const browser = await chromium.launch();
   const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
   const errors = [];
-  page.on("pageerror", (e) => errors.push(e.message));
-  page.on("console", (m) => m.type() === "error" && errors.push(m.text()));
-  const db = () => page.evaluate(() => JSON.parse(localStorage.getItem("wharf:v1")).stores[0]);
+  collectErrors(page, errors);
+  const slug = await createStore(page, "Earthy homeware shop with hand-thrown ceramics and linen", "homeware");
+  const db = async () => {
+    await page.waitForLoadState("networkidle");
+    return storeBySlug(page, slug);
+  };
   const shot = (n) => OUT && page.screenshot({ path: `${OUT}/${n}.png`, fullPage: false });
 
   // 1. assistant proposes and starts a headline test
@@ -21,6 +22,7 @@ const assert = (c, m) => { if (!c) throw new Error(m); };
   await panel.getByRole("button", { name: "Send" }).click();
   await panel.getByRole("button", { name: "Start headline test" }).click();
   await panel.getByText("✓ Done").waitFor();
+  await waitSaved(page);
   let s = await db();
   assert(s.experiments.length === 1 && s.experiments[0].kind === "headline", "assistant should create a headline test");
   ok("assistant started a headline test");
@@ -37,6 +39,7 @@ const assert = (c, m) => { if (!c) throw new Error(m); };
   await dlg.getByLabel(/B · new price/).fill("99");
   await dlg.getByRole("button", { name: "Start experiment" }).click();
   await page.getByText("Waiting for visitors").waitFor();
+  await waitSaved(page);
   await shot("S20-experiment-new");
   s = await db();
   const priceExp = s.experiments.find((e) => e.kind === "price");
@@ -59,8 +62,8 @@ const assert = (c, m) => { if (!c) throw new Error(m); };
   // (the page load after "Exit preview" already counted this browser as a normal visitor)
   const before = (await db()).experiments.find((x) => x.id === priceExp.id).variants.map((v) => ({ ...v }));
   await page.evaluate((slug) => {
-    localStorage.removeItem("wharf:visitor");
-    localStorage.removeItem(`wharf:ab-seen:${slug}`);
+    localStorage.removeItem("sf:visitor");
+    localStorage.removeItem(`sf:ab-seen:${slug}`);
     sessionStorage.clear();
   }, s.slug);
   await page.goto(`${B}/store/${s.slug}/p/${product.id}`);
@@ -92,11 +95,12 @@ const assert = (c, m) => { if (!c) throw new Error(m); };
 
   // 5. simulate traffic until decided; auto-rollout applies the winner
   await page.goto(`${B}/dashboard/experiments?id=${priceExp.id}`);
+  await page.getByRole("button", { name: "Simulate 250 visitors" }).waitFor();
   for (let i = 0; i < 12; i++) {
     s = await db();
     if (s.experiments.find((x) => x.id === priceExp.id).status === "completed") break;
     await page.getByRole("button", { name: "Simulate 250 visitors" }).click();
-    await page.waitForTimeout(150);
+    await waitSaved(page);
   }
   await shot("S20-experiment-results");
   s = await db();
@@ -107,8 +111,13 @@ const assert = (c, m) => { if (!c) throw new Error(m); };
     assert(live === e.variants.find((v) => v.id === e.winner).value, "winner's price must be live");
     ok("auto-rollout applied the winning price");
   } else {
-    await page.getByRole("button", { name: "Roll out B" }).click();
+    // not decided yet in this run (simulated traffic is random): roll out B by hand instead
     page.once("dialog", (d) => d.accept());
+    await page.getByRole("button", { name: "Roll out B" }).click();
+    await page.getByText("B won and is now live").waitFor();
+    await waitSaved(page);
+    assert((await db()).products.find((p) => p.id === product.id).priceCents === 9900, "B price live after manual rollout");
+    ok("undecided test rolled out by hand; B price is live");
   }
 
   // 6. manual rollout of the headline test
@@ -117,6 +126,7 @@ const assert = (c, m) => { if (!c) throw new Error(m); };
   page.once("dialog", (d) => d.accept());
   await page.getByRole("button", { name: "Roll out B" }).click();
   await page.getByText("B won and is now live").waitFor();
+  await waitSaved(page);
   s = await db();
   assert(s.heroHeadline === head.variants[1].value, "headline B should be live");
   ok("manual rollout made headline B live");

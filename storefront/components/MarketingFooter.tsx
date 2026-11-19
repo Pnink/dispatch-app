@@ -28,7 +28,7 @@ export function MarketingFooter() {
         ))}
       </div>
       <div className="border-t border-border">
-        <div className="mx-auto max-w-6xl px-4 py-5 text-xs text-muted sm:px-6">Private build. Data lives in this browser until a database is connected.</div>
+        <div className="mx-auto max-w-6xl px-4 py-5 text-xs text-muted sm:px-6">Private build. Your data is saved on the computer that runs it.</div>
       </div>
     </footer>
   );

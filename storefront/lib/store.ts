@@ -1,71 +1,189 @@
 "use client";
 /**
- * Demo data layer: everything lives in localStorage under one key.
- * Swap these functions for server actions / a real DB later; screens only
- * use the exported functions and hooks.
+ * Browser data layer.
+ *
+ * Owner app: the whole database is loaded from /api/admin/db and every change is saved back
+ * automatically (debounced ~0.3s). Each change is kept as a function until the server confirms it,
+ * so if something else saved first (another window, a new order) the changes are re-applied on top
+ * of the newer data instead of overwriting it.
+ *
+ * Storefront: reads only the public view of a store and sends shopper actions to /api/public/...
+ * The server re-checks and re-prices everything; nothing a shopper's browser says is trusted.
  */
-import { useSyncExternalStore } from "react";
-import { generateStore, refundOrder, uid } from "./ai";
+import { useEffect, useSyncExternalStore } from "react";
+import { generateStore, refundOrder } from "./ai";
+import { asStore, type PublicStore } from "./commerce";
+import { forcedVariants, markSeen, seenExperiments, shopperView, visitorId } from "./experiments";
 import type { CartLine, Category, Customer, Order, OrderStatus, Store } from "./types";
-import { chargeCard, type CardInput } from "./payments";
+import type { CardInput } from "./payments";
 import { withDefaults } from "./sections";
-import { forcedVariants, markSeen, recordConversion, recordExposures, seenExperiments, shopperView, visitorId } from "./experiments";
 
-const KEY = "wharf:v1";
-const CURRENT = "wharf:current";
+// neutral prefix: shoppers can see storage keys in dev tools, so they must not name the platform
+const P = "sf";
+const CURRENT = `${P}:current`;
 
 type DB = { stores: Store[] };
+export type SaveState = "saved" | "saving" | "unsaved" | "offline" | "error";
+type State = {
+  status: "idle" | "loading" | "ready" | "error" | "locked";
+  db: DB;
+  rev: number;
+  save: SaveState;
+  savedAt?: string;
+  error?: string;
+  current: string | null;
+};
 
-let cache: DB | null = null;
+let state: State = { status: "idle", db: { stores: [] }, rev: 0, save: "saved", current: null };
 const listeners = new Set<() => void>();
-
-function read(): DB {
-  if (cache) return cache;
-  if (typeof window === "undefined") return { stores: [] };
-  try {
-    const raw = window.localStorage.getItem(KEY);
-    cache = raw ? migrate(JSON.parse(raw) as DB) : seed();
-    if (!raw) write(cache);
-  } catch {
-    cache = seed();
-  }
-  return cache;
-}
-
-/** Fill in fields added after a store was first saved. */
-function migrate(db: DB): DB {
-  return { stores: db.stores.map(withDefaults) };
-}
-
-function write(db: DB) {
-  cache = db;
-  try {
-    window.localStorage.setItem(KEY, JSON.stringify(db));
-  } catch {
-    /* storage full or blocked: keep in memory */
-  }
-  listeners.forEach((l) => l());
-}
-
+const emit = () => listeners.forEach((l) => l());
+const set = (patch: Partial<State>) => {
+  state = { ...state, ...patch };
+  emit();
+};
 function subscribe(l: () => void) {
   listeners.add(l);
-  const onStorage = (e: StorageEvent) => {
-    if (e.key === KEY) {
-      cache = null;
-      l();
-    }
-  };
-  window.addEventListener("storage", onStorage);
   return () => {
     listeners.delete(l);
-    window.removeEventListener("storage", onStorage);
   };
 }
 
+// ---------- loading ----------
+async function api(path: string, init?: RequestInit) {
+  const res = await fetch(path, { ...init, headers: { "content-type": "application/json", ...(init?.headers || {}) }, cache: "no-store" });
+  if (res.status === 401) {
+    window.location.href = `/login?next=${encodeURIComponent(window.location.pathname)}`;
+    throw new Error("unauthorised");
+  }
+  return res;
+}
+
+async function load() {
+  if (state.status === "loading" || state.status === "ready") return;
+  set({ status: "loading" });
+  try {
+    const res = await api("/api/admin/db");
+    if (res.status === 403) return set({ status: "locked", error: (await res.json()).error });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = (await res.json()) as { rev: number; savedAt: string; stores: Store[] };
+    let current: string | null = null;
+    try {
+      current = localStorage.getItem(CURRENT);
+    } catch {
+      /* ignore */
+    }
+    // keep anything changed while we were loading
+    const loaded = pending.reduce((db, fn) => fn(db), { stores: data.stores.map(withDefaults) } as DB);
+    set({ status: "ready", db: loaded, rev: data.rev, savedAt: data.savedAt, save: pending.length ? "unsaved" : "saved", current });
+    startPolling();
+  } catch (e) {
+    if ((e as Error).message !== "unauthorised") set({ status: "error", error: "Couldn't reach the app's server. Is it running?" });
+  }
+}
+
+// ---------- saving ----------
+type Change = (db: DB) => DB;
+let pending: Change[] = [];
+let timer: ReturnType<typeof setTimeout> | null = null;
+let inFlight = false;
+
+function change(fn: Change) {
+  pending.push(fn);
+  set({ db: fn(state.db), save: "unsaved" });
+  schedule(300);
+}
+
+function schedule(ms: number) {
+  if (timer) clearTimeout(timer);
+  timer = setTimeout(flush, ms);
+}
+
+async function flush(): Promise<void> {
+  timer = null;
+  if (inFlight || !pending.length) return;
+  inFlight = true;
+  const sending = pending.length;
+  set({ save: "saving" });
+  try {
+    const res = await api("/api/admin/db", { method: "PUT", body: JSON.stringify({ baseRev: state.rev, stores: state.db.stores }) });
+    if (res.status === 409) {
+      // Someone saved first. Re-apply our unsaved changes on top of their version and try again.
+      const server = (await res.json()) as { rev: number; stores: Store[] };
+      const rebased = pending.reduce((db, fn) => fn(db), { stores: server.stores.map(withDefaults) } as DB);
+      set({ db: rebased, rev: server.rev });
+      inFlight = false;
+      return flush();
+    }
+    if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || `HTTP ${res.status}`);
+    const out = (await res.json()) as { rev: number; savedAt: string };
+    pending = pending.slice(sending);
+    set({ rev: out.rev, savedAt: out.savedAt, save: pending.length ? "unsaved" : "saved", error: undefined });
+    inFlight = false;
+    if (pending.length) schedule(50);
+  } catch (e) {
+    inFlight = false;
+    if ((e as Error).message === "unauthorised") return;
+    const offline = e instanceof TypeError; // fetch network failure
+    set({ save: offline ? "offline" : "error", error: offline ? "Can't reach the server. Your changes are kept and will save when it's back." : (e as Error).message });
+    schedule(4000); // keep retrying
+  }
+}
+
+/** Pull in changes made elsewhere (new orders, sign-ups) while the owner app is open. */
+let polling = false;
+function startPolling() {
+  if (polling || typeof window === "undefined") return;
+  polling = true;
+  const tick = async () => {
+    if (document.visibilityState !== "visible" || pending.length || inFlight || state.status !== "ready") return;
+    try {
+      const res = await fetch("/api/admin/db", { cache: "no-store" });
+      if (!res.ok) return;
+      const data = (await res.json()) as { rev: number; savedAt: string; stores: Store[] };
+      if (data.rev > state.rev && !pending.length && !inFlight) set({ db: { stores: data.stores.map(withDefaults) }, rev: data.rev, savedAt: data.savedAt });
+    } catch {
+      /* next tick */
+    }
+  };
+  setInterval(tick, 8000);
+  window.addEventListener("focus", tick);
+  window.addEventListener("beforeunload", (e) => {
+    if (pending.length || inFlight) e.preventDefault(); // browser asks "leave with unsaved changes?"
+  });
+  // Closing or reloading inside the save delay: send the last changes as the page goes away.
+  window.addEventListener("pagehide", () => {
+    if (!pending.length || inFlight) return;
+    const body = JSON.stringify({ baseRev: state.rev, stores: state.db.stores });
+    if (body.length < 60_000) {
+      // keepalive requests survive the page closing (browsers cap them at 64 KB)
+      fetch("/api/admin/db", { method: "PUT", headers: { "content-type": "application/json" }, body, keepalive: true }).catch(() => {});
+      pending = [];
+    }
+  });
+}
+
+/** Save now (⌘S). */
+export function saveNow() {
+  if (pending.length) {
+    if (timer) clearTimeout(timer);
+    flush();
+  }
+}
+
+// ---------- owner hooks ----------
 const EMPTY: DB = { stores: [] };
+const SERVER_STATE: State = { status: "idle", db: EMPTY, rev: 0, save: "saved", current: null };
+
+export function useAdmin(): State {
+  const s = useSyncExternalStore(subscribe, () => state, () => SERVER_STATE);
+  useEffect(() => {
+    load();
+  }, []);
+  return s;
+}
 
 export function useDB(): DB {
-  return useSyncExternalStore(subscribe, read, () => EMPTY);
+  return useAdmin().db;
 }
 
 export function useStore(slug: string | undefined): Store | undefined {
@@ -73,143 +191,163 @@ export function useStore(slug: string | undefined): Store | undefined {
   return slug ? db.stores.find((s) => s.slug === slug) : undefined;
 }
 
-/**
- * The store as the current shopper sees it: running A/B experiments applied for this visitor.
- * Storefront pages use this; the dashboard uses the raw store.
- */
-export function useShopperStore(slug: string | undefined): Store | undefined {
-  const store = useStore(slug);
-  return store ? shopperView(store, visitorId()) : undefined;
+/** The store the owner app is looking at. */
+export function useCurrentStore(): Store | undefined {
+  const s = useAdmin();
+  return s.db.stores.find((x) => x.slug === s.current) ?? s.db.stores[0];
 }
 
-/** Count this visitor once per running experiment (preview overrides are not counted). */
-export function recordVisit(slug: string) {
-  const store = read().stores.find((s) => s.slug === slug);
+export function setCurrentStore(slug: string) {
+  try {
+    localStorage.setItem(CURRENT, slug);
+  } catch {
+    /* ignore */
+  }
+  set({ current: slug });
+}
+
+// ---------- owner mutations (all autosaved) ----------
+export function updateStore(slug: string, fn: (s: Store) => Store) {
+  change((db) => ({ stores: db.stores.map((s) => (s.slug === slug ? fn(s) : s)) }));
+}
+
+export function createStore(prompt: string, category?: Category): Store {
+  const store = generateStore(prompt, category, state.db.stores.map((s) => s.slug));
+  change((db) => ({ stores: [store, ...db.stores.filter((s) => s.slug !== store.slug)] }));
+  setCurrentStore(store.slug);
+  return store;
+}
+
+export function deleteStore(slug: string) {
+  change((db) => ({ stores: db.stores.filter((s) => s.slug !== slug) }));
+}
+
+export function setOrderStatus(slug: string, orderId: string, status: OrderStatus) {
+  updateStore(slug, (s) => (status === "refunded" ? refundOrder(s, orderId) : { ...s, orders: s.orders.map((o) => (o.id === orderId ? { ...o, status } : o)) }));
+}
+
+/** Delete every store and order (Settings → Danger zone). Backups on disk are kept. */
+export function eraseEverything() {
+  change(() => ({ stores: [] }));
+}
+
+// ---------- storefront (public, any visitor) ----------
+type Closed = { name: string; palette: Store["palette"]; font: Store["font"] };
+export type Front = { status: "loading" | "ready" | "missing" | "closed" | "error"; store?: Store; closed?: Closed };
+const fronts = new Map<string, Front>();
+const LOADING: Front = { status: "loading" };
+
+async function loadFront(slug: string) {
+  if (!slug) return;
+  try {
+    const res = await fetch(`/api/public/stores/${encodeURIComponent(slug)}`, { cache: "no-store" });
+    if (res.status === 404) fronts.set(slug, { status: "missing" });
+    else if (!res.ok) fronts.set(slug, { status: "error" });
+    else {
+      const data = await res.json();
+      fronts.set(slug, data.published === false ? { status: "closed", closed: data as Closed } : { status: "ready", store: withDefaults(asStore(data as PublicStore)) });
+    }
+  } catch {
+    fronts.set(slug, { status: "error" });
+  }
+  emit();
+}
+
+export function refreshFront(slug: string) {
+  return loadFront(slug);
+}
+
+/** The storefront's public data, as loaded from the server. */
+export function useStorefront(slug: string): Front {
+  const f = useSyncExternalStore(subscribe, () => fronts.get(slug) ?? LOADING, () => LOADING);
+  useEffect(() => {
+    if (!fronts.has(slug)) loadFront(slug);
+    const onFocus = () => loadFront(slug);
+    window.addEventListener("focus", onFocus);
+    return () => window.removeEventListener("focus", onFocus);
+  }, [slug]);
+  return f;
+}
+
+/** The storefront as this shopper sees it (running A/B tests applied for this visitor). */
+export function useShopperStore(slug: string | undefined): Store | undefined {
+  const f = useStorefront(slug ?? "");
+  return f.store ? shopperView(f.store, visitorId()) : undefined;
+}
+
+async function post(slug: string, action: string, payload: unknown) {
+  const res = await fetch(`/api/public/stores/${encodeURIComponent(slug)}/${action}`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(payload) });
+  const data = await res.json().catch(() => ({}));
+  return { ok: res.ok, data };
+}
+
+/** Count this visitor once per running experiment (previews are never counted). */
+export function recordVisit(slug: string, store: Store | undefined) {
   if (!store) return;
   const seen = seenExperiments(slug);
   const forced = forcedVariants();
   const fresh = store.experiments.filter((e) => e.status === "running" && !seen.includes(e.id) && !forced[e.id]).map((e) => e.id);
   if (!fresh.length) return;
   markSeen(slug, fresh);
-  updateStore(slug, (s) => recordExposures(s, visitorId(), fresh));
+  post(slug, "visit", { visitor: visitorId(), experiments: fresh });
 }
 
-/** The store the merchant dashboard is looking at. */
-export function useCurrentStore(): Store | undefined {
-  const db = useDB();
-  const slug = typeof window !== "undefined" ? window.localStorage.getItem(CURRENT) : null;
-  return db.stores.find((s) => s.slug === slug) ?? db.stores[0];
-}
-
-export function setCurrentStore(slug: string) {
-  window.localStorage.setItem(CURRENT, slug);
-  listeners.forEach((l) => l());
-}
-
-// ---------- mutations ----------
-export function createStore(prompt: string, category?: Category): Store {
-  const db = read();
-  const store = generateStore(prompt, category, db.stores.map((s) => s.slug));
-  write({ stores: [store, ...db.stores] });
-  setCurrentStore(store.slug);
-  return store;
-}
-
-export function updateStore(slug: string, fn: (s: Store) => Store) {
-  const db = read();
-  write({ stores: db.stores.map((s) => (s.slug === slug ? fn(s) : s)) });
-}
-
-export function deleteStore(slug: string) {
-  const db = read();
-  write({ stores: db.stores.filter((s) => s.slug !== slug) });
-}
-
-export function setOrderStatus(slug: string, orderId: string, status: OrderStatus) {
-  updateStore(slug, (s) =>
-    status === "refunded" ? refundOrder(s, orderId) : { ...s, orders: s.orders.map((o) => (o.id === orderId ? { ...o, status } : o)) },
-  );
-}
-
-export function resetDemo() {
-  window.localStorage.removeItem(KEY);
-  window.localStorage.removeItem(CURRENT);
-  Object.keys(window.localStorage)
-    .filter((k) => k.startsWith("wharf:cart:"))
-    .forEach((k) => window.localStorage.removeItem(k));
-  cache = null;
-  read();
-  listeners.forEach((l) => l());
-}
-
-// ---------- pricing maths ----------
-export function cartTotals(store: Store, lines: CartLine[], code?: string) {
-  const subtotal = lines.reduce((a, l) => {
-    const p = store.products.find((x) => x.id === l.productId);
-    return a + (p ? p.priceCents * l.qty : 0);
-  }, 0);
-  const discount = store.discounts.find((d) => d.code.toUpperCase() === (code || "").trim().toUpperCase());
-  const discountCents = discount ? Math.round((subtotal * discount.percent) / 100) : 0;
-  const shippingCents = subtotal === 0 || subtotal - discountCents >= store.freeShippingCents ? 0 : store.shippingCents;
-  return { subtotal, discountCents, shippingCents, total: subtotal - discountCents + shippingCents, discount };
+export type Quote = { subtotal: number; discountCents: number; shippingCents: number; total: number; code: { code: string; percent: number } | null };
+export async function quote(slug: string, lines: CartLine[], code?: string): Promise<Quote | null> {
+  try {
+    const r = await post(slug, "quote", { lines, code, visitor: visitorId(), forced: forcedVariants() });
+    return r.ok ? (r.data as Quote) : null;
+  } catch {
+    return null;
+  }
 }
 
 export type PlaceOrderResult = { ok: true; order: Order } | { ok: false; error: string };
-
-export async function placeOrder(slug: string, lines: CartLine[], customer: Customer, card: CardInput, code?: string): Promise<PlaceOrderResult> {
-  const raw = read().stores.find((s) => s.slug === slug);
-  if (!raw) return { ok: false, error: "Store not found." };
-  const visitor = visitorId();
-  const store = shopperView(raw, visitor); // prices/thresholds/codes this shopper was shown
-  if (!lines.length) return { ok: false, error: "Your cart is empty." };
-  for (const l of lines) {
-    const p = store.products.find((x) => x.id === l.productId);
-    if (!p) return { ok: false, error: "An item in your cart is no longer available." };
-    if (p.stock < l.qty) return { ok: false, error: `Only ${p.stock} of ${p.title} left in stock.` };
+export async function placeOrder(slug: string, lines: CartLine[], customer: Customer, payment: CardInput, code?: string): Promise<PlaceOrderResult> {
+  try {
+    const r = await post(slug, "order", { lines, customer, payment, code, visitor: visitorId(), exposed: seenExperiments(slug), forced: forcedVariants() });
+    if (!r.ok) return { ok: false, error: r.data.error || "We couldn't place that order." };
+    const order = r.data.order as Order;
+    try {
+      sessionStorage.setItem(`${P}:order:${order.id}`, JSON.stringify(order)); // shown on the confirmation page
+    } catch {
+      /* ignore */
+    }
+    loadFront(slug); // stock changed
+    return { ok: true, order };
+  } catch {
+    return { ok: false, error: "Couldn't reach the store. Check your connection and try again." };
   }
-  const t = cartTotals(store, lines, code);
-  const charge = await chargeCard(card, t.total);
-  if (!charge.ok) return { ok: false, error: charge.error };
-
-  const number = 1001 + store.orders.length;
-  const points = store.apps.loyalty ? Math.floor(t.total / 100) : 0;
-  const order: Order = {
-    id: uid(),
-    number,
-    customer,
-    items: lines.map((l) => {
-      const p = store.products.find((x) => x.id === l.productId)!;
-      return { productId: p.id, title: p.title, variant: l.variant, qty: l.qty, unitCents: p.priceCents };
-    }),
-    subtotalCents: t.subtotal,
-    discountCents: t.discountCents,
-    shippingCents: t.shippingCents,
-    totalCents: t.total,
-    status: "paid",
-    createdAt: new Date().toISOString(),
-    pointsEarned: points,
-    paymentMethod: charge.label,
-  };
-  const forced = forcedVariants();
-  const exposed = seenExperiments(slug).filter((id) => !forced[id]);
-  updateStore(slug, (prev) => {
-    // conversion first: it may auto-promote a winner (e.g. a new price), which the rest must keep
-    const s = recordConversion(prev, visitor, exposed, t.total);
-    return {
-      ...s,
-      orders: [order, ...s.orders],
-      products: s.products.map((p) => {
-        const qty = lines.filter((l) => l.productId === p.id).reduce((a, l) => a + l.qty, 0);
-        return qty ? { ...p, stock: p.stock - qty } : p;
-      }),
-      loyalty: points ? { ...s.loyalty, [customer.email.toLowerCase()]: (s.loyalty[customer.email.toLowerCase()] || 0) + points } : s.loyalty,
-    };
-  });
-  return { ok: true, order };
 }
 
-// ---------- cart (per store, localStorage) ----------
-const cartKey = (slug: string) => `wharf:cart:${slug}`;
+export function readPlacedOrder(id: string): Order | null {
+  try {
+    return JSON.parse(sessionStorage.getItem(`${P}:order:${id}`) || "null");
+  } catch {
+    return null;
+  }
+}
+
+export async function addSubscriber(slug: string, email: string) {
+  try {
+    return (await post(slug, "subscribe", { email })).ok;
+  } catch {
+    return false;
+  }
+}
+
+export async function submitReview(slug: string, review: { productId: string; author: string; rating: number; body: string }) {
+  try {
+    const r = await post(slug, "review", review);
+    if (r.ok) loadFront(slug);
+    return r.ok ? null : (r.data.error as string) || "Couldn't post your review.";
+  } catch {
+    return "Couldn't reach the store.";
+  }
+}
+
+// ---------- cart (per store, in this browser) ----------
+const cartKey = (slug: string) => `${P}:cart:${slug}`;
 const cartCache = new Map<string, CartLine[]>();
 const NO_LINES: CartLine[] = [];
 
@@ -233,7 +371,7 @@ export function writeCart(slug: string, lines: CartLine[]) {
   } catch {
     /* ignore */
   }
-  listeners.forEach((l) => l());
+  emit();
 }
 
 export function useCart(slug: string): CartLine[] {
@@ -243,55 +381,11 @@ export function useCart(slug: string): CartLine[] {
 export function addToCart(slug: string, productId: string, variant: string | undefined, qty = 1) {
   const lines = readCart(slug);
   const existing = lines.find((l) => l.productId === productId && l.variant === variant);
-  writeCart(
-    slug,
-    existing ? lines.map((l) => (l === existing ? { ...l, qty: l.qty + qty } : l)) : [...lines, { productId, variant, qty }],
-  );
+  writeCart(slug, existing ? lines.map((l) => (l === existing ? { ...l, qty: l.qty + qty } : l)) : [...lines, { productId, variant, qty }]);
 }
 
-// ---------- seed ----------
-function seed(): DB {
-  const demo = generateStore("A calm homeware shop selling handmade ceramics and linen, earthy and minimal", "homeware");
-  const names: [string, string][] = [
-    ["Hannah Cole", "hannah@example.com"],
-    ["Diego Ramos", "diego@example.com"],
-    ["Mei Tanaka", "mei@example.com"],
-    ["Oliver Grant", "oliver@example.com"],
-    ["Fatima Noor", "fatima@example.com"],
-  ];
-  const now = Date.now();
-  demo.orders = names.map(([name, email], i) => {
-    const p = demo.products[i % demo.products.length];
-    const qty = 1 + (i % 2);
-    const subtotal = p.priceCents * qty;
-    const shipping = subtotal >= demo.freeShippingCents ? 0 : demo.shippingCents;
-    return {
-      id: uid(),
-      number: 1005 - i,
-      customer: { name, email, address: `${12 + i * 7} Market Street`, city: "Portland", zip: "97205", country: "US" },
-      items: [{ productId: p.id, title: p.title, variant: p.variants[0], qty, unitCents: p.priceCents }],
-      subtotalCents: subtotal,
-      discountCents: 0,
-      shippingCents: shipping,
-      totalCents: subtotal + shipping,
-      status: (i < 2 ? "paid" : i === 4 ? "refunded" : "fulfilled") as OrderStatus,
-      createdAt: new Date(now - i * 26 * 3600_000 - 3600_000).toISOString(),
-      pointsEarned: 0,
-      paymentMethod: "Visa •••• 4242",
-    };
-  });
-  demo.published = true;
-  return { stores: [demo] };
-}
-
-// ---------- email list ----------
-export function addSubscriber(slug: string, email: string) {
-  const e = email.trim().toLowerCase();
-  updateStore(slug, (s) => (s.subscribers.includes(e) ? s : { ...s, subscribers: [...s.subscribers, e] }));
-}
-
-// ---------- owner flag (shows the owner tools bar on storefronts in the owner's browser only) ----------
-const OWNER = "wharf:owner";
+// ---------- owner flag (owner tools bar on storefronts, in the owner's browser only) ----------
+const OWNER = `${P}:owner`;
 export function markOwner() {
   try {
     localStorage.setItem(OWNER, "1");
@@ -318,10 +412,11 @@ function download(name: string, text: string, type: string) {
 }
 
 const stamp = () => new Date().toISOString().slice(0, 10);
+const BACKUP_FORMAT = "tillery-backup";
 
 /** Everything: all stores, products, orders, experiments, settings. */
 export function downloadBackup() {
-  download(`wharf-backup-${stamp()}.json`, JSON.stringify({ format: "wharf-backup", version: 1, exportedAt: new Date().toISOString(), ...read() }, null, 2), "application/json");
+  download(`tillery-backup-${stamp()}.json`, JSON.stringify({ format: BACKUP_FORMAT, version: 1, exportedAt: new Date().toISOString(), stores: state.db.stores }, null, 2), "application/json");
 }
 
 /** Replace all data with a backup file's contents. Returns an error message, or null on success. */
@@ -333,16 +428,17 @@ export function restoreBackup(text: string): string | null {
     return "That file isn't valid JSON.";
   }
   const p = parsed as { format?: string; stores?: unknown };
-  if (p.format !== "wharf-backup" || !Array.isArray(p.stores)) return "That doesn't look like a backup from this app.";
-  const db = migrate({ stores: p.stores as Store[] });
-  if (db.stores.some((s) => !s.slug || !s.name || !Array.isArray(s.products))) return "The backup is missing store data.";
-  write(db);
-  if (db.stores[0]) setCurrentStore(db.stores[0].slug);
+  if (p.format !== BACKUP_FORMAT || !Array.isArray(p.stores)) return "That doesn't look like a backup from this app.";
+  const stores = (p.stores as Store[]).map(withDefaults);
+  if (stores.some((s) => !s.slug || !s.name || !Array.isArray(s.products))) return "The backup is missing store data.";
+  change(() => ({ stores }));
+  if (stores[0]) setCurrentStore(stores[0].slug);
   return null;
 }
 
 const csvCell = (v: unknown) => {
-  const s = String(v ?? "");
+  let s = String(v ?? "");
+  if (/^[=+\-@\t\r]/.test(s)) s = `'${s}`; // stop spreadsheet formula injection from customer-entered text
   return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
 };
 const toCsv = (rows: unknown[][]) => rows.map((r) => r.map(csvCell).join(",")).join("\n");

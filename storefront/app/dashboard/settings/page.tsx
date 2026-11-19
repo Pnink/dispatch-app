@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Download, Trash2, Upload } from "lucide-react";
-import { deleteStore, downloadBackup, downloadCsv, resetDemo, restoreBackup, updateStore, useCurrentStore } from "@/lib/store";
+import { deleteStore, downloadBackup, downloadCsv, eraseEverything, restoreBackup, updateStore, useCurrentStore } from "@/lib/store";
 import { PageHeader, Panel } from "@/components/dashboard/PageHeader";
 import { Button, Field, Toggle } from "@/components/ui";
 
@@ -96,7 +96,7 @@ export default function SettingsPage() {
                   }}
                 />
               </label>
-              <p className="mt-1 text-xs text-muted">Replaces all stores, orders and settings in this browser.</p>
+              <p className="mt-1 text-xs text-muted">Replaces all stores, orders and settings.</p>
               {restoreMsg && <p className={`mt-2 text-xs ${restoreMsg.ok ? "text-success" : "text-danger"}`} role="status">{restoreMsg.text}</p>}
             </div>
           </div>
@@ -118,13 +118,13 @@ export default function SettingsPage() {
             <Button
               variant="secondary"
               onClick={() => {
-                if (confirm("Reset the whole demo? All stores and orders in this browser will be replaced with the sample store.")) {
-                  resetDemo();
+                if (confirm("Erase every store, product and order? Download a backup first. (Automatic backups on disk are kept.)")) {
+                  eraseEverything();
                   router.push("/dashboard");
                 }
               }}
             >
-              Reset demo data
+              Erase everything
             </Button>
           </div>
         </Panel>

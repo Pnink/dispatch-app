@@ -27,7 +27,7 @@ export function MarketingNav() {
           </div>
         </div>
         <div className="hidden items-center gap-2 md:flex">
-          <LinkButton href="/dashboard" variant="ghost" size="sm">Dashboard</LinkButton>
+          <LinkButton href="/dashboard" variant="ghost" size="sm">Open app</LinkButton>
           <LinkButton href="/create" variant="accent" size="sm">New store</LinkButton>
         </div>
         <button className="rounded-md p-2 md:hidden" onClick={() => setOpen(!open)} aria-expanded={open} aria-label="Menu">
@@ -40,7 +40,7 @@ export function MarketingNav() {
             <Link key={l.href} href={l.href} onClick={() => setOpen(false)} className="block rounded-md px-2 py-2 text-sm">{l.label}</Link>
           ))}
           <div className="mt-2 flex gap-2">
-            <LinkButton href="/dashboard" variant="secondary" size="sm" className="flex-1">Dashboard</LinkButton>
+            <LinkButton href="/dashboard" variant="secondary" size="sm" className="flex-1">Open app</LinkButton>
             <LinkButton href="/create" variant="accent" size="sm" className="flex-1">New store</LinkButton>
           </div>
         </div>

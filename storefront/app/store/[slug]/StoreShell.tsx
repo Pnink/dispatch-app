@@ -3,15 +3,15 @@ import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { useParams, usePathname } from "next/navigation";
 import { X } from "lucide-react";
-import { addSubscriber, isOwner, recordVisit, useCart, useShopperStore } from "@/lib/store";
+import { addSubscriber, isOwner, recordVisit, useCart, useShopperStore, useStorefront } from "@/lib/store";
 import { forcedVariants, setForced } from "@/lib/experiments";
-import type { VariantId } from "@/lib/types";
-import type { Store } from "@/lib/types";
+import type { Store, VariantId } from "@/lib/types";
 import { StoreFooter, StoreHeader, StoreTheme, headingFont } from "@/components/storefront";
 import { cx } from "@/lib/format";
 
 export function StoreShell({ children }: { children: React.ReactNode }) {
   const { slug } = useParams<{ slug: string }>();
+  const front = useStorefront(slug);
   const store = useShopperStore(slug);
   const cart = useCart(slug);
   const pathname = usePathname();
@@ -23,16 +23,21 @@ export function StoreShell({ children }: { children: React.ReactNode }) {
       const [id, v] = ab.split(".");
       if (id && (v === "a" || v === "b")) {
         setForced(id, v as VariantId);
-        sessionStorage.removeItem(`wharf:popup:${slug}`);
+        sessionStorage.removeItem(`sf:popup:${slug}`);
       }
     }
-    recordVisit(slug);
     setMounted(true);
   }, [slug]);
 
+  // count this visit once the store's running experiments are known
+  const loaded = front.status === "ready";
+  useEffect(() => {
+    if (mounted && loaded) recordVisit(slug, front.store);
+  }, [mounted, loaded, slug, front.store]);
+
   // white-label: the browser tab shows the store, never the platform
-  const storeName = store?.name;
-  const accent = store?.palette.accent;
+  const storeName = store?.name ?? front.closed?.name;
+  const accent = store?.palette.accent ?? front.closed?.palette.accent;
   useEffect(() => {
     if (!storeName) return;
     document.title = storeName;
@@ -53,30 +58,31 @@ export function StoreShell({ children }: { children: React.ReactNode }) {
     return () => keep.disconnect();
   }, [storeName, accent, pathname]);
 
-  if (!mounted) return <div className="min-h-dvh" />;
-  if (!store)
+  if (!mounted || front.status === "loading") return <div className="min-h-dvh" aria-busy="true" />;
+  if (front.status === "missing" || front.status === "error")
     return (
       <div className="grid min-h-dvh place-items-center p-6 text-center">
         <div>
-          <h1 className="text-2xl font-semibold">Store not found</h1>
-          <p className="mt-2 text-muted">This store doesn&apos;t exist in this browser. Demo data lives in local storage.</p>
-          <Link href="/create" className="mt-4 inline-block text-accent hover:underline">Create a store</Link>
+          <h1 className="text-2xl font-semibold">{front.status === "missing" ? "Page not found" : "This shop is temporarily unavailable"}</h1>
+          <p className="mt-2 text-muted">{front.status === "missing" ? "Check the address and try again." : "Please try again in a minute."}</p>
         </div>
       </div>
     );
+  if (front.status === "closed" && front.closed) {
+    const c = front.closed;
+    return (
+      <div className="grid min-h-dvh place-items-center p-6 text-center" style={{ background: c.palette.bg, color: c.palette.text }}>
+        <div>
+          <h1 className={cx("text-4xl", c.font === "serif" ? "font-serif" : "font-semibold")}>{c.name}</h1>
+          <p className="mt-3 opacity-70">Opening soon.</p>
+          {isOwner() && <Link href="/dashboard/settings" className="mt-8 inline-block text-xs underline opacity-60">Publish from your dashboard</Link>}
+        </div>
+      </div>
+    );
+  }
+  if (!store) return <div className="min-h-dvh" />;
 
   const base = `/store/${store.slug}`;
-  if (!store.published)
-    return (
-      <StoreTheme store={store} className="grid min-h-dvh place-items-center p-6 text-center">
-        <div>
-          <h1 className={cx("text-4xl", headingFont(store))}>{store.name}</h1>
-          <p className="mt-3 opacity-70">Opening soon.</p>
-          <Link href="/dashboard/settings" className="mt-8 inline-block text-xs underline opacity-60">Owner? Publish from your dashboard</Link>
-        </div>
-      </StoreTheme>
-    );
-
   const inCheckout = pathname.endsWith("/checkout");
   return (
     <StoreTheme store={store} className="flex min-h-dvh flex-col">
@@ -117,7 +123,7 @@ function OwnerBar() {
 }
 
 function Popup({ store }: { store: Store }) {
-  const key = `wharf:popup:${store.slug}`;
+  const key = `sf:popup:${store.slug}`;
   const [open, setOpen] = useState(false);
   const [email, setEmail] = useState("");
   const [done, setDone] = useState(false);
@@ -164,8 +170,7 @@ function Popup({ store }: { store: Store }) {
               onSubmit={(e) => {
                 e.preventDefault();
                 if (/^\S+@\S+\.\S+$/.test(email)) {
-                  addSubscriber(store.slug, email);
-                  setDone(true);
+                  addSubscriber(store.slug, email).then((ok) => ok && setDone(true));
                 }
               }}
             >

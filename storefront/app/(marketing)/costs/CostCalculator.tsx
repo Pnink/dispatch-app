@@ -20,7 +20,7 @@ export function CostCalculator() {
     { item: "Database", note: db === "paid" ? "Paid tier once you outgrow free (≈$25/mo)" : "Free tier is plenty to start", cents: db === "paid" ? 2500 : 0 },
     { item: "Domain", note: "≈$15 a year", cents: 125 },
     { item: "Transactional email", note: "Free tiers cover a few thousand emails a month", cents: 0 },
-    { item: "AI assistant", note: ai ? "Pay-per-use model calls; light use ≈ a few dollars" : "Off", cents: ai ? 500 : 0 },
+    { item: "AI assistant", note: ai ? "Claude API, pay per use: ≈2¢ per assistant reply, ≈5–10¢ per generated store (daily use ≈ $5–15)" : "Off", cents: ai ? 1000 : 0 },
   ];
   const total = rows.reduce((a, r) => a + r.cents, 0);
   const fixed = total - processor;

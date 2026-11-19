@@ -3,8 +3,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { useParams } from "next/navigation";
 import { Check, Minus, Plus } from "lucide-react";
-import { addToCart, updateStore, useShopperStore } from "@/lib/store";
-import { uid } from "@/lib/ai";
+import { addToCart, submitReview, useShopperStore } from "@/lib/store";
 import { money, cx } from "@/lib/format";
 import { ProductArt } from "@/components/ProductArt";
 import { ProductCard, Stars, avgRating, headingFont } from "@/components/storefront";
@@ -110,7 +109,7 @@ export default function ProductPage() {
               </figure>
             ))}
           </div>
-          <ReviewForm onSubmit={(author, rating, body) => updateStore(store.slug, (s) => ({ ...s, reviews: [{ id: uid(), productId: product.id, author, rating, body }, ...s.reviews] }))} />
+          <ReviewForm onSubmit={(author, rating, body) => submitReview(store.slug, { productId: product.id, author, rating, body })} />
         </section>
       )}
 
@@ -126,7 +125,8 @@ export default function ProductPage() {
   );
 }
 
-function ReviewForm({ onSubmit }: { onSubmit: (author: string, rating: number, body: string) => void }) {
+function ReviewForm({ onSubmit }: { onSubmit: (author: string, rating: number, body: string) => Promise<string | null> }) {
+  const [err, setErr] = useState("");
   const [open, setOpen] = useState(false);
   const [rating, setRating] = useState(5);
   const [name, setName] = useState("");
@@ -142,8 +142,7 @@ function ReviewForm({ onSubmit }: { onSubmit: (author: string, rating: number, b
       onSubmit={(e) => {
         e.preventDefault();
         if (!name.trim() || body.trim().length < 5) return;
-        onSubmit(name.trim(), rating, body.trim());
-        setThanks(true);
+        onSubmit(name.trim(), rating, body.trim()).then((error) => (error ? setErr(error) : setThanks(true)));
       }}
     >
       <fieldset>
@@ -156,6 +155,7 @@ function ReviewForm({ onSubmit }: { onSubmit: (author: string, rating: number, b
       </fieldset>
       <label className="block text-sm">Name<input required value={name} onChange={(e) => setName(e.target.value)} className={cx(input, "mt-1")} /></label>
       <label className="block text-sm">Review<textarea required minLength={5} rows={3} value={body} onChange={(e) => setBody(e.target.value)} className={cx(input, "mt-1")} /></label>
+      {err && <p className="text-xs text-red-600" role="alert">{err}</p>}
       <button type="submit" className="rounded-md bg-[var(--s-accent)] px-4 py-2 text-sm font-medium text-[var(--s-on-accent)]">Post review</button>
     </form>
   );

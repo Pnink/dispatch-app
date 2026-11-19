@@ -1,5 +1,5 @@
 /**
- * A/B testing engine (client-side, demo).
+ * A/B testing engine. Pure functions: run in the browser (display) and on the server (orders, visits).
  *
  * - Assignment: each storefront visitor gets a stable random id; variant = hash(visitor + experiment) % 2.
  * - Exposure: counted once per visitor per experiment, when they load the storefront.
@@ -13,7 +13,7 @@ import { hash, uid } from "./ai";
 import type { Experiment, ExperimentKind, Store, Variant, VariantId } from "./types";
 
 // ---------- visitor identity ----------
-const VISITOR = "wharf:visitor";
+const VISITOR = "sf:visitor";
 
 export function visitorId(): string {
   if (typeof window === "undefined") return "server";
@@ -29,7 +29,7 @@ export function visitorId(): string {
   }
 }
 
-const seenKey = (slug: string) => `wharf:ab-seen:${slug}`;
+const seenKey = (slug: string) => `sf:ab-seen:${slug}`;
 export function seenExperiments(slug: string): string[] {
   try {
     return JSON.parse(localStorage.getItem(seenKey(slug)) || "[]");
@@ -46,7 +46,7 @@ export function markSeen(slug: string, ids: string[]) {
 }
 
 /** Preview overrides (?ab=<expId>.<a|b>), kept for the browser session; never counted in stats. */
-const forceKey = "wharf:ab-force";
+const forceKey = "sf:ab-force";
 export function forcedVariants(): Record<string, VariantId> {
   try {
     return JSON.parse(sessionStorage.getItem(forceKey) || "{}");
@@ -65,9 +65,10 @@ export function setForced(expId: string, v: VariantId | null) {
   }
 }
 
-export function assign(exp: Experiment, visitor: string): VariantId {
-  const forced = typeof window !== "undefined" ? forcedVariants()[exp.id] : undefined;
-  if (forced) return forced;
+/** forced: preview overrides; defaults to this browser's previews on the client, none on the server. */
+export function assign(exp: Experiment, visitor: string, forced?: Record<string, VariantId>): VariantId {
+  const f = (forced ?? (typeof window !== "undefined" ? forcedVariants() : {}))[exp.id];
+  if (f) return f;
   return hash(`${visitor}:${exp.id}`) % 2 === 0 ? "a" : "b";
 }
 
@@ -96,8 +97,8 @@ export function applyVariant(store: Store, exp: Experiment, v: VariantId): Store
 }
 
 /** The store as a given shopper sees it, with every running experiment applied. */
-export function shopperView(store: Store, visitor: string): Store {
-  return (store.experiments ?? []).filter((e) => e.status === "running").reduce((s, e) => applyVariant(s, e, assign(e, visitor)), store);
+export function shopperView(store: Store, visitor: string, forced?: Record<string, VariantId>): Store {
+  return (store.experiments ?? []).filter((e) => e.status === "running").reduce((s, e) => applyVariant(s, e, assign(e, visitor, forced)), store);
 }
 
 // ---------- stats ----------

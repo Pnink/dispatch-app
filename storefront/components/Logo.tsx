@@ -1,15 +1,14 @@
 import Link from "next/link";
 import { BRAND } from "@/lib/brand";
 
-/** Wharf mark: a pier (plank on two pilings) over a wave line, in a rounded square. Draft art. */
+/** Tillery mark: a till drawer seen from the front — a counter line over an open drawer with a coin slot. Draft art. */
 export function LogoMark({ className = "h-7 w-7" }: { className?: string }) {
   return (
     <svg viewBox="0 0 32 32" className={className} aria-hidden="true">
       <rect width="32" height="32" rx="9" className="fill-accent" />
-      <rect x="6" y="10" width="20" height="3.2" rx="1.6" className="fill-on-accent" />
-      <rect x="9.5" y="13" width="3" height="9" rx="1" className="fill-on-accent" />
-      <rect x="19.5" y="13" width="3" height="9" rx="1" className="fill-on-accent" />
-      <path d="M5 23.5c2.2-1.6 4.3-1.6 6.5 0s4.3 1.6 6.5 0 4.3-1.6 6.5 0 2.2 1.2 2.5 1" fill="none" strokeWidth="2" strokeLinecap="round" className="stroke-on-accent" />
+      <rect x="6" y="8.5" width="20" height="3" rx="1.5" className="fill-on-accent" />
+      <path d="M8 14h16l-1.6 9.5H9.6z" className="fill-on-accent" />
+      <rect x="13" y="17" width="6" height="2.2" rx="1.1" className="fill-accent" />
     </svg>
   );
 }

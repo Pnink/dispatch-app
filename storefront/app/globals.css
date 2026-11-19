@@ -1,6 +1,6 @@
 @import "tailwindcss";
 
-/* Wharf design tokens (see replica/design/tokens.json) */
+/* Tillery design tokens (see replica/design/tokens.json) */
 @theme {
   --color-bg: #fbfaf7;
   --color-surface: #f2efe8;

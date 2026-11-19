@@ -22,14 +22,14 @@ const SECTIONS: { id: string; title: string; qs: [string, React.ReactNode][] }[]
     qs: [
       ["Will shoppers know what platform I use?", "No. Storefronts show your store name in the browser tab, your own favicon, your colours, and no “powered by” line or platform link anywhere — not in the page, the footer, checkout or order pages."],
       ["Do shoppers need an account?", "No. Guest checkout is the default."],
-      ["What do they see that I don't want them to?", "Nothing. The small dark owner bar at the top of a storefront only shows in your own browser (the one you use the dashboard in)."],
+      ["What do they see that I don't want them to?", "Nothing. The small dark owner bar at the top of a storefront only shows in the browser you use the dashboard in."],
     ],
   },
   {
     id: "real",
     title: "Running it for real",
     qs: [
-      ["Can I sell real things on it today?", "Not yet. Right now everything is stored in your browser and payments are simulated. To take real orders it needs three things: real payments (Stripe), a real database, and hosting on your own domain. Each is a well-understood step — see the next answers."],
+      ["Can I sell real things on it today?", "Not yet: payments are still simulated. Your data already saves to a file on the computer running the app, the owner area has a login, and the server double-checks every price. What's left is real payments (Stripe) and putting it online on your own domain."],
       ["What would real payments need?", "A Stripe account (free to open). Your bank details go into Stripe, never into this app; Stripe pays you out. The app only needs your Stripe API keys, and test mode works with no bank or ID at all."],
       ["Where would it be hosted?", "Any host that runs Next.js. Check that the plan you pick allows commercial use — some free tiers don't."],
       ["Is it safe to run my real store on it?", "Once it's on a real database and real payments, with backups, yes — that's the same setup most independent stores use. Card numbers are handled entirely by the payment processor, never by your server."],
@@ -49,7 +49,18 @@ const SECTIONS: { id: string; title: string; qs: [string, React.ReactNode][] }[]
     qs: [
       ["Can I get everything out?", "Yes — Settings → Your data. A full JSON backup of every store, plus orders, products and your email list as CSV files any other platform can import."],
       ["How do I move to another computer?", "Download a full backup on the old one and restore it on the new one, from the same screen."],
-      ["What happens if I clear my browser?", "In this build, the data goes with it. Download a backup first. A real database removes this problem."],
+      ["Where is everything saved?", "In the data folder next to the app, on the computer running it: db.json holds everything, and backups/ keeps a copy every 10 minutes (the newest 50). Clearing your browser doesn't touch it."],
+      ["Does it save automatically?", "Yes. Every change is saved within a moment of making it — the header shows “Saved” with the time. ⌘S saves immediately if you prefer."],
+    ],
+  },
+  {
+    id: "security",
+    title: "Security",
+    qs: [
+      ["Who can open the dashboard?", "Only you. With no password set, the owner app only opens on the computer running it. Before it goes online you set OWNER_PASSWORD; then signing in is required, wrong guesses are slowed down and locked out after five, and sessions are signed cookies that scripts can't read."],
+      ["What can a shopper's browser see?", "Only what a shopper needs: products, prices, reviews and the look of the store. Orders, customer details, your email list, discount codes and test results are never sent to it."],
+      ["Can someone change a price at checkout?", "No. The server ignores prices from the browser and works out every total from its own data, including stock and discount codes."],
+      ["What else is in place?", "Strict browser security headers (no framing, no outside scripts), size limits and rate limits on every public request, CSRF checks on every change, and automatic backups. The Security guide in the project lists what to do before going live."],
     ],
   },
   {

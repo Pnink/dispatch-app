@@ -239,8 +239,7 @@ function Newsletter({ store }: { store: Store }) {
             onSubmit={(e) => {
               e.preventDefault();
               if (!/^\S+@\S+\.\S+$/.test(email)) return setErr("Enter a valid email address.");
-              addSubscriber(store.slug, email);
-              setDone(true);
+              addSubscriber(store.slug, email).then((ok) => (ok ? setDone(true) : setErr("Couldn't sign you up. Try again in a moment.")));
             }}
           >
             <label htmlFor={`nl-${store.slug}`} className="sr-only">Email address</label>

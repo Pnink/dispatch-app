@@ -1,19 +1,22 @@
 {
-  "name": "wharf",
+  "name": "tillery",
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev -p 3100",
+    "dev": "next dev -H 127.0.0.1 -p 3100",
     "build": "next build",
-    "start": "next start -p 3100",
+    "start": "next start -H 127.0.0.1 -p 3100",
     "lint": "next lint",
-    "e2e": "node e2e/walkthrough.cjs replica/clone-screens && node e2e/experiments.cjs replica/clone-screens"
+    "e2e": "bash e2e/run.sh",
+    "app": "next build && next start -H 127.0.0.1 -p 3100",
+    "start:public": "node scripts/start-public.mjs"
   },
   "dependencies": {
     "lucide-react": "1.76.0",
     "next": "15.5.29",
     "react": "19.1.1",
-    "react-dom": "19.1.1"
+    "react-dom": "19.1.1",
+    "server-only": "0.0.1"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "4.1.13",

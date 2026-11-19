@@ -2,24 +2,24 @@
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { CheckCircle2, Gift } from "lucide-react";
-import { useStore } from "@/lib/store";
+import { isOwner, readPlacedOrder, useShopperStore } from "@/lib/store";
 import { money, cx } from "@/lib/format";
 import { headingFont } from "@/components/storefront";
 
 export default function OrderConfirmed() {
   const { slug, id } = useParams<{ slug: string; id: string }>();
-  const store = useStore(slug);
+  const store = useShopperStore(slug);
   if (!store) return null;
-  const order = store.orders.find((o) => o.id === id);
+  // shown from this browser's session only: order details are never readable by URL alone
+  const order = readPlacedOrder(id);
   const base = `/store/${store.slug}`;
   if (!order)
     return (
       <div className="mx-auto max-w-xl px-4 py-24 text-center">
-        <h1 className={cx("text-3xl", headingFont(store))}>Order not found</h1>
+        <h1 className={cx("text-3xl", headingFont(store))}>Thanks for your order</h1>
         <Link href={base} className="mt-6 inline-block underline">Back to the shop</Link>
       </div>
     );
-  const balance = store.loyalty[order.customer.email.toLowerCase()] ?? 0;
 
   return (
     <div className="mx-auto max-w-2xl px-4 py-16 sm:px-6">
@@ -32,7 +32,7 @@ export default function OrderConfirmed() {
           <Gift className="h-8 w-8 shrink-0" aria-hidden />
           <div>
             <div className="font-semibold">You earned {order.pointsEarned} points</div>
-            <div className="text-sm opacity-90">Your balance is now {balance} points. Use them on a future order.</div>
+            <div className="text-sm opacity-90">They&apos;re saved to {order.customer.email} for your next order.</div>
           </div>
         </div>
       )}
@@ -59,7 +59,7 @@ export default function OrderConfirmed() {
 
       <div className="mt-8 flex flex-wrap gap-3">
         <Link href={base} className="rounded-md bg-[var(--s-accent)] px-5 py-3 text-sm font-medium text-[var(--s-on-accent)]">Continue shopping</Link>
-        <Link href={`/dashboard/orders?id=${order.id}`} className="rounded-md border border-[color-mix(in_srgb,var(--s-text)_25%,transparent)] px-5 py-3 text-sm">See it in the merchant dashboard →</Link>
+        {isOwner() && <Link href={`/dashboard/orders?id=${order.id}`} className="rounded-md border border-[color-mix(in_srgb,var(--s-text)_25%,transparent)] px-5 py-3 text-sm">See it in your dashboard →</Link>}
       </div>
     </div>
   );
