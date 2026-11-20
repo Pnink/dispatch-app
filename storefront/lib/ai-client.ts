@@ -6,6 +6,7 @@ import { storeContext } from "./ai-actions";
 import type { Store } from "./types";
 import { buildContext, SPECIALISTS, type Input, type SpecialistId } from "./ai/specialists";
 import type { Issue } from "./ai/checks";
+import { findModel } from "./ai-models";
 
 export type AiSettings = {
   aiModel: string;
@@ -65,6 +66,16 @@ export async function setAiModel(aiModel: string) {
 }
 
 export const aiModel = () => settings?.aiModel ?? "builtin";
+
+/** True when requests will be answered by the free rules (picked, or auto with no key added). */
+export const isFree = (s: AiSettings | null) => !s || s.aiModel === "builtin" || (s.aiModel === "auto" && !s.keys.anthropic && !s.keys.openai);
+
+/** What to call the current setting in the UI. */
+export function modelName(s: AiSettings | null) {
+  if (!s) return "";
+  if (s.aiModel === "auto") return isFree(s) ? "Auto (free rules until you add a key)" : "Auto";
+  return s.aiModel === "builtin" ? "Free rules" : (findModel(s.aiModel)?.label ?? s.aiModel);
+}
 export async function ensureAiSettings() {
   await load();
   return settings;
@@ -101,6 +112,7 @@ export type SpecialistResult = {
   issues: Issue[];
   review: { ran: boolean; passed: boolean; problems: string[]; revised: boolean };
   calls: number;
+  why?: string;
 };
 
 /** Run one AI-team specialist on the current store. */

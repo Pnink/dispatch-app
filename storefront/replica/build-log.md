@@ -47,3 +47,7 @@ a worked example, real store data and memory. Lessons come from the owner and fr
 plus an optional AI editor give one revision. Seven practice tests are scored and saved to `evals.json`. `e2e/ai-team.cjs`
 (fake provider) covers: the editor catches a planted "best-selling" claim and it is revised; every specialist answers;
 refunds are flagged; memory stays private; planner → test → rollout → lesson; practice test saved. All 8 suites pass.
+
+Auto model (2026-11-20): new default "auto". A free rule-based router picks small, mid or top per request (chat is sorted
+by the message), chooses the company by practice-test score, has the other company review, and switches company if an API
+fails. Covered by `e2e/ai-team.cjs`. All 8 suites pass.

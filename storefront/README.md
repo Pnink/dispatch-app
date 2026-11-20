@@ -91,7 +91,12 @@ See **[SECURITY.md](SECURITY.md)** for what's built in, the checklist before goi
 
 ## AI models
 
-Pick the model in **Settings → AI model**. The assistant and the store generator use your choice. The default is the free built-in rules (no key needed).
+Pick the model in **Settings → AI model**. The default is **Auto**: until you add a key it uses the free rules; once you do, it picks for every request (`lib/ai/router.ts`):
+- **Quick question:** a small, cheap model (Claude Haiku 5.5 / GPT-6 Luna).
+- **Writing or a store change:** a mid model (Claude Sonnet 5.5 / GPT-6.2 Sol).
+- **Numbers, strategy or building a store:** a top model (Claude Opus 5.5 / GPT-6.2 Astra).
+- **Claude or ChatGPT:** whichever scored higher on your last practice test. Claude is used until you've tested both.
+- **Combined (with both keys):** one company's model does the work and the other company's model checks it. If one company's API fails, the other takes over.
 
 - **Claude (Anthropic):** Fable 5.2 / 5.1 / 5, Mythos 5.2 / 5.1 (verified organizations only), Opus 5.5 / 5 / 4.8 / 4.7 / 4.6, Sonnet 5.5 / 5 / 4.6, Haiku 5.5 / 4.5.
 - **ChatGPT models (OpenAI):** GPT-6.2 Astra, GPT-6 Astra, GPT-6.2 Sol, GPT-6.1 Sol, GPT-6.1 Terra, GPT-6 Luna.

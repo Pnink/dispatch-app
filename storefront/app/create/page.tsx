@@ -5,9 +5,8 @@ import Link from "next/link";
 import { ArrowLeft, Check, ImagePlus, Loader2, RefreshCw, Sparkles, X } from "lucide-react";
 import { CATEGORY_CHIPS, detectCategory, generationSteps } from "@/lib/ai";
 import { createStore, deleteStore, updateStore, useStore } from "@/lib/store";
-import { ensureAiSettings, generateWithAi, useAiSettings } from "@/lib/ai-client";
+import { ensureAiSettings, generateWithAi, isFree, modelName, useAiSettings } from "@/lib/ai-client";
 import { applyGenerated } from "@/lib/ai-actions";
-import { findModel } from "@/lib/ai-models";
 import { buildFromPhotos } from "@/lib/photo-store";
 import { preparePhoto, uploadPhoto, type PreparedPhoto } from "@/lib/media-client";
 import type { Category } from "@/lib/types";
@@ -95,7 +94,7 @@ function Create() {
     const work = (async () => {
       const ids = await Promise.all(photos.map((p) => uploadPhoto(p.blob)));
       const st = await ensureAiSettings();
-      const r = st && st.aiModel !== "builtin" ? await generateWithAi(text, cat, ids) : null;
+      const r = !isFree(st) ? await generateWithAi(text, cat, ids) : null;
       return { ids, r };
     })();
 
@@ -145,7 +144,7 @@ function Create() {
   }
 
   const steps = stepList(prompt.trim(), category);
-  const modelLabel = !ai ? "" : ai.aiModel === "builtin" ? "the free builder" : (findModel(ai.aiModel)?.label ?? ai.aiModel);
+  const modelLabel = !ai ? "" : isFree(ai) ? "the free builder" : ai.aiModel === "auto" ? "Auto (it picks the best model)" : modelName(ai);
 
   return (
     <div className="flex min-h-dvh flex-col bg-surface">
@@ -263,8 +262,8 @@ function Create() {
             {modelLabel && (
               <p className="text-xs text-muted">
                 Built with <strong>{modelLabel}</strong>.{" "}
-                {ai?.aiModel === "builtin" ? (
-                  <>For copy written from your photos, pick an AI model in <Link href="/dashboard/settings#ai" className="underline">Settings</Link>.</>
+                {isFree(ai) ? (
+                  <>For copy written from your photos, add an AI key (see <Link href="/dashboard/settings#ai" className="underline">Settings</Link>).</>
                 ) : (
                   <>The model looks at your photos and writes everything. <Link href="/dashboard/settings#ai" className="underline">Change</Link></>
                 )}

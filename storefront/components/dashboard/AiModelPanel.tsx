@@ -29,7 +29,9 @@ export function AiModelPanel() {
     setSaving(null);
   };
 
+  const AUTO_INFO: ModelInfo = { id: "auto", provider: "builtin", label: "Auto — picks for every message (recommended)", note: "Small cheap model for quick questions, mid for writing, top for numbers and building stores. With both keys: Claude and ChatGPT check each other's work and back each other up. Free rules until you add a key." };
   const groups: { title: string; key?: "anthropic" | "openai"; env?: string; models: ModelInfo[] }[] = [
+    { title: "Let Kovaz choose", models: [AUTO_INFO] },
     { title: "Free", models: [BUILTIN] },
     { title: "Claude (Anthropic)", key: "anthropic", env: "ANTHROPIC_API_KEY", models: [...CLAUDE_MODELS, ...ai.extra.anthropic.map((id) => unknownModel(id, "anthropic"))] },
     { title: "ChatGPT models (OpenAI)", key: "openai", env: "OPENAI_API_KEY", models: [...OPENAI_MODELS, ...ai.extra.openai.map((id) => unknownModel(id, "openai"))] },
@@ -37,7 +39,7 @@ export function AiModelPanel() {
 
   return (
     <section id="ai" className="scroll-mt-20">
-      <Panel title="AI model" action={<span className="flex items-center gap-1 text-xs text-muted"><Sparkles className="h-3 w-3 text-accent" /> Used by the assistant and store generator</span>}>
+      <Panel title="AI model" action={<span className="flex items-center gap-1 text-xs text-muted"><Sparkles className="h-3 w-3 text-accent" /> Used by the assistant, AI team and store builder</span>}>
         <div className="space-y-6 p-5">
           {error && <p className="text-sm text-danger" role="alert">{error}</p>}
           {groups.map((g) => {

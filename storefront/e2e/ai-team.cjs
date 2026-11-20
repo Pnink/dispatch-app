@@ -129,7 +129,29 @@ const OUT = process.argv[2];
   await page.waitForURL(/\/dashboard\/ai/);
   ok("G then I opens the AI team");
 
-  await page.evaluate(() => fetch("/api/admin/ai", { method: "PUT", headers: { "content-type": "application/json" }, body: JSON.stringify({ aiModel: "builtin" }) }));
+  // 8. auto mode: picks per message, and mixes companies (one writes, the other checks)
+  const put = (m) => page.evaluate((aiModel) => fetch("/api/admin/ai", { method: "PUT", headers: { "content-type": "application/json" }, body: JSON.stringify({ aiModel }) }), m);
+  await put("auto");
+  const ctxStore = (await db()).stores[0];
+  const ask = (text) =>
+    page.evaluate(async ({ text, store }) => (await (await fetch("/api/admin/ai", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ task: "assistant", store: { name: store.name }, page: "today", history: [{ role: "user", content: text }] }) })).json()), { text, store: ctxStore });
+  const quick = await ask("How many orders today?");
+  const deep = await ask("What's the best strategy to grow sales this month, and why?");
+  const change = await ask("Create a 10% discount");
+  assert(quick.model === "claude-haiku-5-5", `quick question -> small model (got ${quick.model})`);
+  assert(change.model === "claude-sonnet-5-5", `store change -> mid model (got ${change.model})`);
+  assert(deep.model === "claude-opus-5-5", `strategy -> top model (got ${deep.model})`);
+  assert(/quick question/.test(quick.label) && /real thinking/.test(deep.label), "label says why");
+  ok("auto: quick question → Haiku, change → Sonnet, strategy → Opus, each with the reason");
+
+  await page.goto(B + "/dashboard/ai");
+  await page.getByRole("main").getByRole("link", { name: "Auto" }).waitFor();
+  await page.getByRole("tab", { name: /Product page writer/ }).click();
+  await page.getByRole("button", { name: /Ask the specialist/ }).click();
+  await page.locator("[data-specialist-result]").getByText(/Claude Sonnet 5\.5 wrote it, GPT-6\.2 Sol checked it/).waitFor();
+  ok("auto: Claude writes and ChatGPT checks (two companies on one job)");
+
+  await put("builtin");
   assert(errors.length === 0, "no page errors: " + errors.join(" | "));
   ok("no console errors");
   await browser.close();

@@ -25,12 +25,13 @@ const OUT = process.argv[2];
   // 1. the catalogue lists every Claude model and the main OpenAI models; keys never leak
   await page.goto(B + "/costs");
   const s = await page.evaluate(async () => (await fetch("/api/admin/ai")).json());
-  assert(s.keys.anthropic && s.keys.openai && s.aiModel === "builtin", "fake-mode server reports both keys, default built-in");
+  assert(s.keys.anthropic && s.keys.openai && s.aiModel === "auto", "fake-mode server reports both keys, default auto");
   const raw = await page.evaluate(async () => (await fetch("/api/admin/ai")).text());
   assert(!raw.includes("sk-test-"), "API keys must never be sent to the browser");
   ok("keys configured on the server, never sent to the browser");
 
   // need a store to open the dashboard: create one with the built-in generator first
+  await page.evaluate(() => fetch("/api/admin/ai", { method: "PUT", headers: { "content-type": "application/json" }, body: JSON.stringify({ aiModel: "builtin" }) }));
   const q = new URLSearchParams({ prompt: "Small-batch coffee roaster with a warm, cosy feel", category: "coffee", review: "1" });
   await page.goto(`${B}/create?${q}`);
   await page.getByText("Your store is ready to review").waitFor({ timeout: 20000 });

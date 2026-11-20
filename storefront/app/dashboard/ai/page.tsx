@@ -3,10 +3,9 @@ import Link from "next/link";
 import { Fragment, useEffect, useState } from "react";
 import { AlertTriangle, BookOpen, Brain, Check, ClipboardCopy, FileText, FlaskConical, Gauge, Headphones, Mail, Search, ShieldCheck, Tag, Trash2, Wrench } from "lucide-react";
 import { updateStore, useCurrentStore } from "@/lib/store";
-import { runPracticeTest, runSpecialist, useAiSettings, type SpecialistResult } from "@/lib/ai-client";
+import { isFree, modelName, runPracticeTest, runSpecialist, useAiSettings, type SpecialistResult } from "@/lib/ai-client";
 import { SPECIALIST_LIST, type Input, type SpecialistId } from "@/lib/ai/specialists";
 import { addLesson, applyEmail, applyPrice, applyProductCopy, applySeo, startTest } from "@/lib/ai/apply";
-import { findModel } from "@/lib/ai-models";
 import type { EmailFlowKind, Store } from "@/lib/types";
 import { PageHeader, Panel } from "@/components/dashboard/PageHeader";
 import { Button } from "@/components/ui";
@@ -29,8 +28,8 @@ export default function AiTeamPage() {
       /* ignore */
     }
   }, []);
-  const model = ai?.aiModel ?? "builtin";
-  const modelLabel = model === "builtin" ? "Free rules" : (findModel(model)?.label ?? model);
+  const free = isFree(ai);
+  const modelLabel = modelName(ai) || "Free rules";
 
   return (
     <>
@@ -43,10 +42,10 @@ export default function AiTeamPage() {
           </div>
         }
       />
-      {model === "builtin" && (
+      {free && (
         <div className="mb-6 flex items-start gap-3 rounded-xl border border-buoy/30 bg-buoy/5 p-4 text-sm">
           <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-buoy" aria-hidden />
-          <p>You&apos;re on the <strong>free rules</strong>: careful, but basic. For the real specialists, pick a Claude or GPT model in <Link href="/dashboard/settings#ai" className="underline">Settings → AI model</Link>.</p>
+          <p>You&apos;re on the <strong>free rules</strong>: careful, but basic. For the real specialists, add a Claude or ChatGPT key (see <Link href="/dashboard/settings#ai" className="underline">Settings → AI model</Link>).</p>
         </div>
       )}
 
@@ -71,14 +70,14 @@ export default function AiTeamPage() {
             );
           })}
         </div>
-        <Workspace key={active} id={active} store={store} review={review && model !== "builtin"} />
+        <Workspace key={active} id={active} store={store} review={review && !free} />
       </div>
 
       <label className="mt-4 flex items-center gap-2 text-sm">
         <input
           type="checkbox"
           checked={review}
-          disabled={model === "builtin"}
+          disabled={free}
           onChange={(e) => {
             setReview(e.target.checked);
             try {
@@ -94,7 +93,7 @@ export default function AiTeamPage() {
 
       <div className="mt-8 grid gap-6 2xl:grid-cols-2">
         <Memory store={store} />
-        <Quality modelLabel={modelLabel} isFree={model === "builtin"} />
+        <Quality modelLabel={modelLabel} isFree={free} />
       </div>
     </>
   );
@@ -190,7 +189,7 @@ function Checks({ result }: { result: SpecialistResult }) {
   return (
     <div className="space-y-2 text-sm" aria-label="Quality checks">
       <div className="flex flex-wrap items-center gap-2 text-xs">
-        <span className="rounded-full bg-surface px-2 py-0.5 text-muted">by {result.label}</span>
+        <span className="rounded-full bg-surface px-2 py-0.5 text-muted" title={result.why}>by {result.label}{result.why ? ` · ${result.why}` : ""}</span>
         {r.ran && (
           <span className={cx("flex items-center gap-1 rounded-full px-2 py-0.5", r.passed && !r.revised ? "bg-success/10 text-success" : "bg-accent-soft text-accent")}>
             <ShieldCheck className="h-3 w-3" /> {r.revised ? `Editor found ${r.problems.length} problem${r.problems.length === 1 ? "" : "s"} — fixed` : "Editor approved"}

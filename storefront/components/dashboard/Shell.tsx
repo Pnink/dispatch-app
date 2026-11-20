@@ -4,9 +4,8 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { AlertTriangle, Blocks, Bot, BrainCircuit, Check, CloudOff, ExternalLink, FlaskConical, Home, Keyboard, Loader2, LogOut, Mail, Package, Palette, Plus, Send, Settings, ShoppingCart, Sparkles, X } from "lucide-react";
 import { assistant, type AssistantAction } from "@/lib/ai";
-import { askAssistant, useAiSettings } from "@/lib/ai-client";
+import { askAssistant, isFree, modelName, useAiSettings } from "@/lib/ai-client";
 import { toAssistantAction } from "@/lib/ai-actions";
-import { findModel } from "@/lib/ai-models";
 import { markOwner, saveNow, setCurrentStore, updateStore, useAdmin, useCurrentStore, type SaveState } from "@/lib/store";
 import { CommandPalette, useCommandPalette } from "./CommandPalette";
 import { LogoMark } from "@/components/Logo";
@@ -261,8 +260,8 @@ function AssistantPanel({ onClose }: { onClose: () => void }) {
   }, [msgs, thinking]);
 
   const ai = useAiSettings();
-  const model = ai?.aiModel ?? "builtin";
-  const modelLabel = model === "builtin" ? "Built-in rules" : (findModel(model)?.label ?? model);
+  const free = isFree(ai);
+  const modelLabel = modelName(ai) || "Free rules";
 
   const send = async (text: string) => {
     if (!text.trim() || thinking) return;
@@ -270,7 +269,7 @@ function AssistantPanel({ onClose }: { onClose: () => void }) {
     setMsgs(next);
     setInput("");
     setThinking(true);
-    if (model === "builtin") {
+    if (free) {
       await new Promise((r) => setTimeout(r, 400));
       const r = assistant(text, store, page.toLowerCase());
       setMsgs((m) => [...m, { role: "assistant", text: r.text, action: r.action, by: "Built-in rules" }]);
@@ -341,7 +340,7 @@ function AssistantPanel({ onClose }: { onClose: () => void }) {
         </form>
         <p className="mt-2 text-[11px] text-muted">
           Model: <Link href="/dashboard/settings#ai" className="underline">{modelLabel}</Link>
-          {model === "builtin" ? " · free, offline" : " · billed per use by the provider"}
+          {free ? " · free, offline" : ai?.aiModel === "auto" ? " · picks the best model for each message" : " · billed per use by the provider"}
         </p>
       </div>
     </aside>

@@ -34,7 +34,7 @@ function taskText(id: SpecialistId, input: Input, ctx: Context, order: SupportOr
   return `Draft a reply to this customer message:\n"""${(input.message ?? "").slice(0, 3000)}"""\n${order ? `Their order (from the store's records): ${JSON.stringify(order)}` : "No matching order was found in the store's records."}\nStore: ${ctx.store.name}.`;
 }
 
-export async function runSpecialist(model: string, id: SpecialistId, input: Input, ctx: Context, opts: { photo?: string; order?: SupportOrder; review: boolean }): Promise<RunResult> {
+export async function runSpecialist(model: string, id: SpecialistId, input: Input, ctx: Context, opts: { photo?: string; order?: SupportOrder; review: boolean; reviewer?: string }): Promise<RunResult> {
   const sp = SPECIALISTS[id];
   const system = systemPrompt(sp, ctx);
   const parts: Part[] = [];
@@ -65,7 +65,7 @@ export async function runSpecialist(model: string, id: SpecialistId, input: Inpu
 Fail it if it breaks any HONESTY rule, states facts not present in the data/photo, ignores the store's lessons, or misses the brief.
 List each problem as one short, specific sentence. Pass it if it's ready to use.\n\nHOUSE RULES:\n${playbook(sp.sections)}\n\nSTORE LESSONS:\n${ctx.lessons.map((l) => `- ${l.text}`).join("\n") || "(none)"}`;
     const verdict = await callModel<{ pass: boolean; problems: string[] }>(
-      model,
+      opts.reviewer ?? model,
       editor,
       [{ role: "user", content: [{ type: "text", text: `THE BRIEF:\n${taskText(id, input, ctx, opts.order ?? null)}\n\nTHE WORK (JSON):\n${JSON.stringify(checked.output)}\n\nRule-check notes: ${checked.issues.map((i) => i.text).join(" | ") || "none"}` }] }],
       REVIEW_SCHEMA,

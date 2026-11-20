@@ -90,7 +90,7 @@ export async function updateStoreOnServer<T>(slug: string, fn: (s: Store) => Pro
 // ---------- owner settings (DATA_DIR/settings.json) ----------
 export type Settings = { aiModel: string };
 const SETTINGS = path.join(DIR, "settings.json");
-const DEFAULT_SETTINGS: Settings = { aiModel: "builtin" };
+const DEFAULT_SETTINGS: Settings = { aiModel: "auto" }; // auto = free rules until you add a key, then picks per request
 
 export async function readSettings(): Promise<Settings> {
   try {
