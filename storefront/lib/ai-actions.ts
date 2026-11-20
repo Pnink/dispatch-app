@@ -121,6 +121,7 @@ export function storeContext(s: Store) {
     recentOrders: s.orders.slice(0, 15).map((o) => ({ number: o.number, status: o.status, totalCents: o.totalCents, items: o.items.map((i) => `${i.qty}x ${i.title}`) })),
     subscribers: s.subscribers.length,
     runningExperiments: s.experiments.filter((e) => e.status === "running").map((e) => e.name),
+    lessons: (s.lessons ?? []).map((l) => l.text),
   };
 }
 

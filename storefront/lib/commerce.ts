@@ -20,11 +20,11 @@ export function cartTotals(store: Store, lines: CartLine[], code?: string) {
  * What a shopper's browser is allowed to see: no orders, customers, email list, loyalty balances,
  * email flow drafts, the original prompt, or experiment results.
  */
-export type PublicStore = Omit<Store, "orders" | "subscribers" | "loyalty" | "flows" | "prompt">;
+export type PublicStore = Omit<Store, "orders" | "subscribers" | "loyalty" | "flows" | "prompt" | "lessons">;
 
 export function publicView(s: Store): PublicStore {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const { orders, subscribers, loyalty, flows, prompt, ...rest } = s;
+  const { orders, subscribers, loyalty, flows, prompt, lessons, ...rest } = s;
   return {
     ...rest,
     discounts: [], // codes stay secret; checkout asks the server to check one
@@ -37,7 +37,7 @@ export function publicView(s: Store): PublicStore {
 
 /** A storefront only needs the shopper-visible shape; fill the private fields with empties. */
 export function asStore(p: PublicStore): Store {
-  return { ...p, orders: [], subscribers: [], loyalty: {}, flows: [], prompt: "" };
+  return { ...p, orders: [], subscribers: [], loyalty: {}, flows: [], prompt: "", lessons: [] };
 }
 
 // ---------- input validation (everything from a browser is untrusted) ----------

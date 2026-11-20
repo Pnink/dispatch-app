@@ -115,6 +115,27 @@ The Terra and Luna prices come from third-party trackers and are marked "unverif
 
 **Tested vs. not yet tested:** `npm run e2e` tests the whole AI flow against a fake provider (`AI_FAKE=1`), so tests never spend money. Real Claude and OpenAI calls haven't been made from here, because no keys were available. The OpenAI code uses the standard Chat Completions call with JSON-schema output; check it on your first real request.
 
+## AI team
+
+**AI team** in the sidebar (or press G then I) opens six e-commerce specialists:
+- product page writer
+- pricing advisor
+- email writer
+- A/B test planner
+- SEO writer
+- customer service
+
+Each one gets five things:
+- **A playbook** (`lib/ai/playbook.ts`): written rules on honesty, voice, pricing, email, testing, SEO and support.
+- **A worked example** of great output.
+- **Your real store data:** products, units sold, revenue, stock, discounts, tests and flows. Customer details are not included.
+- **Memory:** facts you teach it, plus the result of every finished A/B test, which is added automatically.
+- **Checks before you see the answer.** Rule checks catch health claims, fake urgency, fake reviews, invented discount codes, unknown products and too-long text. An optional AI editor reviews the work, and the specialist revises it once if the editor finds problems.
+
+Nothing changes until you click apply. Refunds and other exceptions are always flagged for you.
+
+**Practice tests** score the team 0–100 on seven fixed questions about a sample candle shop (for example: don't invent a burn time; flag refund requests). Run them after changing model or memory and compare the scores. The history is kept in `data/evals.json`.
+
 ## Going live
 
 1. Real payments with Stripe Checkout (test mode first).
@@ -124,4 +145,4 @@ The Terra and Luna prices come from third-party trackers and are marked "unverif
 
 ## Tests
 
-`npm run build && npm run e2e` runs five suites against fresh, empty data folders: the core loop, A/B tests, owner tools, security, and a restart to prove data persists. Screenshots go to `replica/clone-screens/`. Planning notes (recon, architecture, brand, parity) are in `replica/`.
+`npm run build && npm run e2e` runs eight suites against fresh, empty data folders: the core loop, A/B tests, owner tools, security, AI models, photo-to-store, the AI team, and a restart to prove data persists. Screenshots go to `replica/clone-screens/`. Planning notes (recon, architecture, brand, parity) are in `replica/`.

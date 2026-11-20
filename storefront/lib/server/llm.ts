@@ -38,9 +38,9 @@ const toOpenAI = (m: Msg) =>
     ? { role: m.role, content: m.content }
     : { role: m.role, content: m.content.map((p) => (p.type === "text" ? { type: "text" as const, text: p.text } : { type: "image_url" as const, image_url: { url: `data:${p.mediaType};base64,${p.data}` } })) };
 
-export async function callModel<T>(model: string, system: string, messages: Msg[], schema: object, opts: { effort?: "low" | "medium" | "high" } = {}): Promise<T> {
+export async function callModel<T>(model: string, system: string, messages: Msg[], schema: object, opts: { effort?: "low" | "medium" | "high"; fake?: () => unknown } = {}): Promise<T> {
   // Test-only switch: deterministic fake replies so the plumbing can be tested without keys or spend.
-  if (process.env.AI_FAKE === "1") return fakeReply(model, messages, schema) as T;
+  if (process.env.AI_FAKE === "1") return (opts.fake ? opts.fake() : fakeReply(model, messages, schema)) as T;
 
   const provider = providerOf(model);
   if (provider === "anthropic") return callClaude<T>(model, system, messages, schema, opts.effort ?? "low");

@@ -41,3 +41,9 @@ Found while testing: (1) a reload inside the 0.3s save delay dropped the last ed
 (2) Next.js always adds x-forwarded-* headers, and trusting x-forwarded-host would have let a spoofed header unlock the
 owner app -> rule is "Host local AND whole forwarding chain loopback", scripts bind 127.0.0.1, start:public needs a password.
 `npm run e2e` (5 suites incl. security + restart persistence) passes.
+
+AI team (2026-11-20): six specialists (product copy, pricing, email, test planner, SEO, support), each with a playbook,
+a worked example, real store data and memory. Lessons come from the owner and from every finished A/B test. Rule checks
+plus an optional AI editor give one revision. Seven practice tests are scored and saved to `evals.json`. `e2e/ai-team.cjs`
+(fake provider) covers: the editor catches a planted "best-selling" claim and it is revised; every specialist answers;
+refunds are flagged; memory stays private; planner → test → rollout → lesson; practice test saved. All 8 suites pass.

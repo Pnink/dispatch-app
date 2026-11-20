@@ -35,6 +35,10 @@ export type Product = {
   art: number; // seed for generated artwork
   /** uploaded product photo (media id); shown instead of the artwork */
   image?: string;
+  /** short facts shown under the description */
+  bullets?: string[];
+  /** search-result description (SEO) */
+  metaDescription?: string;
 };
 
 export type Review = {
@@ -121,6 +125,15 @@ export type Experiment = {
   endedAt?: string;
 };
 
+/** Something the AI team should remember about this store. */
+export type Lesson = {
+  id: string;
+  text: string;
+  /** owner = a fact the owner told us; result = learned from an A/B test or sales; ai = saved from an AI suggestion */
+  source: "owner" | "result" | "ai";
+  createdAt: string;
+};
+
 export type SectionType = "hero" | "collection" | "trust" | "story" | "reviews" | "faq" | "newsletter";
 export type Section = { id: SectionType; enabled: boolean };
 
@@ -151,6 +164,7 @@ export type Store = {
   story: { title: string; body: string };
   faqs: { q: string; a: string }[];
   subscribers: string[];
+  lessons: Lesson[];
   published: boolean;
   createdAt: string;
 };

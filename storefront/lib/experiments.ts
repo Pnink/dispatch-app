@@ -159,7 +159,24 @@ export function endExperiment(store: Store, expId: string, winner: VariantId | "
   if (!exp) return store;
   const ended: Experiment = { ...exp, status: "completed", winner, endedAt: new Date().toISOString() };
   const base = winner === "b" ? applyVariant(store, exp, "b") : store;
-  return { ...base, experiments: store.experiments.map((e) => (e.id === expId ? ended : e)) };
+  return { ...base, experiments: store.experiments.map((e) => (e.id === expId ? ended : e)), lessons: [lessonFrom(exp, winner), ...(store.lessons ?? [])].slice(0, 100) };
+}
+
+/** What a finished test taught, in plain words — saved to the store's memory for the AI team. */
+function lessonFrom(exp: Experiment, winner: VariantId | "none") {
+  const st = experimentStats(exp);
+  const show = (v: string | number) => (exp.kind === "headline" ? `"${v}"` : exp.kind === "popup_offer" ? `${v}% off` : `$${(Number(v) / 100).toFixed(2)}`);
+  const [a, b] = exp.variants;
+  const metric = st.metric === "revenue" ? "revenue per visitor" : "conversion";
+  const sample = `${(a.views + b.views).toLocaleString()} visitors${a.simulatedViews + b.simulatedViews ? ", partly simulated" : ""}`;
+  const pct = `${Math.abs(st.lift * 100).toFixed(0)}%`;
+  const text =
+    winner === "none"
+      ? `${exp.name}: ${show(a.value)} vs ${show(b.value)} — no clear winner (${sample}).`
+      : st.decisive
+        ? `${exp.name}: ${show((winner === "b" ? b : a).value)} beat ${show((winner === "b" ? a : b).value)} on ${metric} (${winner === "b" ? "+" : "−"}${pct} for B, ${Math.round(st.probBBetter * 100)}% sure, ${sample}).`
+        : `${exp.name}: owner chose ${show((winner === "b" ? b : a).value)} over ${show((winner === "b" ? a : b).value)} before the result was certain (${sample}).`;
+  return { id: uid(), text, source: "result" as const, createdAt: new Date().toISOString() };
 }
 
 /** Auto-promote decisive experiments that opted in. */

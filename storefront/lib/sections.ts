@@ -30,7 +30,7 @@ const STORIES: Record<Category, string> = {
   general: "We're a small team making a short list of things we're proud of. Every order is packed by hand.",
 };
 
-type Defaulted = "experiments" | "announcement" | "sections" | "story" | "faqs" | "subscribers";
+type Defaulted = "experiments" | "announcement" | "sections" | "story" | "faqs" | "subscribers" | "lessons";
 export type StoreInput = Omit<Store, Defaulted> & Partial<Pick<Store, Defaulted>>;
 
 /** Fill in fields added after a store was first saved (and give new stores their defaults). */
@@ -48,5 +48,6 @@ export function withDefaults(s: StoreInput): Store {
       { q: "Do you ship internationally?", a: "We ship to most countries. Rates are shown at checkout." },
     ],
     subscribers: p.subscribers ?? [],
+    lessons: p.lessons ?? [],
   };
 }

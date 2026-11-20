@@ -51,6 +51,7 @@ export function CommandPalette({ onClose }: { onClose: () => void }) {
       { id: "apps", group: "Go to", label: "Built-in apps", run: go("/dashboard/apps") },
       { id: "email", group: "Go to", label: "Email flows", run: go("/dashboard/email") },
       { id: "exp", group: "Go to", label: "Experiments (A/B tests)", run: go("/dashboard/experiments") },
+      { id: "ai", group: "Go to", label: "AI team (specialists, memory, practice tests)", run: go("/dashboard/ai") },
       { id: "design", group: "Go to", label: "Design & homepage sections", run: go("/dashboard/design") },
       { id: "settings", group: "Go to", label: "Settings", run: go("/dashboard/settings") },
       { id: "store", group: "Go to", label: "Open storefront", hint: "new tab", run: () => window.open(`/store/${store.slug}`, "_blank") },

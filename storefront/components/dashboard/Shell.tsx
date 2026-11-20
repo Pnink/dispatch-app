@@ -2,7 +2,7 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import { AlertTriangle, Blocks, Bot, Check, CloudOff, ExternalLink, FlaskConical, Home, Keyboard, Loader2, LogOut, Mail, Package, Palette, Plus, Send, Settings, ShoppingCart, Sparkles, X } from "lucide-react";
+import { AlertTriangle, Blocks, Bot, BrainCircuit, Check, CloudOff, ExternalLink, FlaskConical, Home, Keyboard, Loader2, LogOut, Mail, Package, Palette, Plus, Send, Settings, ShoppingCart, Sparkles, X } from "lucide-react";
 import { assistant, type AssistantAction } from "@/lib/ai";
 import { askAssistant, useAiSettings } from "@/lib/ai-client";
 import { toAssistantAction } from "@/lib/ai-actions";
@@ -21,6 +21,7 @@ const NAV = [
   { href: "/dashboard/apps", label: "Built-in apps", icon: Blocks, key: "a" },
   { href: "/dashboard/email", label: "Email", icon: Mail, key: "e" },
   { href: "/dashboard/experiments", label: "Experiments", icon: FlaskConical, key: "x" },
+  { href: "/dashboard/ai", label: "AI team", icon: BrainCircuit, key: "i" },
   { href: "/dashboard/design", label: "Design", icon: Palette, key: "d" },
   { href: "/dashboard/settings", label: "Settings", icon: Settings, key: "s" },
 ];

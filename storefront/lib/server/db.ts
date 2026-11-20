@@ -110,3 +110,25 @@ export async function writeSettings(patch: Partial<Settings>): Promise<Settings>
     return next;
   });
 }
+
+// ---------- AI practice-test history (DATA_DIR/evals.json, newest first, last 30 runs) ----------
+export type EvalRun = { at: string; model: string; label: string; average: number; review: boolean; cases: { name: string; score: number; failures: string[]; issues: string[] }[] };
+const EVALS = path.join(DIR, "evals.json");
+
+export async function readEvals(): Promise<EvalRun[]> {
+  try {
+    return JSON.parse(await fs.readFile(EVALS, "utf8"));
+  } catch {
+    return [];
+  }
+}
+
+export async function addEval(run: EvalRun) {
+  return serial(async () => {
+    const next = [run, ...(await readEvals())].slice(0, 30);
+    await fs.mkdir(DIR, { recursive: true, mode: 0o700 });
+    const tmp = `${EVALS}.${process.pid}.tmp`;
+    await fs.writeFile(tmp, JSON.stringify(next, null, 1), { mode: 0o600 });
+    await fs.rename(tmp, EVALS);
+  });
+}

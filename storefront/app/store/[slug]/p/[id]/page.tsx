@@ -53,6 +53,11 @@ export default function ProductPage() {
             {product.compareAtCents && <span className="text-base line-through opacity-50">{money(product.compareAtCents)}</span>}
           </div>
           <p className="mt-6 leading-relaxed opacity-80">{product.description}</p>
+          {product.bullets && product.bullets.length > 0 && (
+            <ul className="mt-4 list-disc space-y-1 pl-5 text-sm opacity-80">
+              {product.bullets.map((b) => <li key={b}>{b}</li>)}
+            </ul>
+          )}
 
           {product.variants.length > 0 && (
             <fieldset className="mt-6">

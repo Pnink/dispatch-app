@@ -5,7 +5,13 @@
  * POST -> { task: "assistant", store, history } or { task: "generate", prompt, category }
  */
 import type { NextRequest } from "next/server";
-import { readSettings, writeSettings } from "@/lib/server/db";
+import { addEval, readEvals, readSettings, writeSettings } from "@/lib/server/db";
+import { runSpecialist, type SupportOrder } from "@/lib/server/specialist";
+import { SPECIALISTS, type Context, type Input, type SpecialistId } from "@/lib/ai/specialists";
+import { fallback } from "@/lib/ai/fallbacks";
+import { playbook } from "@/lib/ai/playbook";
+import { check } from "@/lib/ai/checks";
+import { CASES, practiceContext, practiceStore, score } from "@/lib/ai/evals";
 import { body, json, rateLimit, sameOrigin } from "@/lib/server/http";
 import { AiError, callModel, keys, liveModels, type Part } from "@/lib/server/llm";
 import { isMediaId, readMedia } from "@/lib/server/media";
@@ -15,13 +21,14 @@ import { ASSISTANT_SCHEMA, ASSISTANT_SYSTEM, GENERATE_SCHEMA, GENERATE_SYSTEM } 
 export const dynamic = "force-dynamic";
 
 export async function GET() {
-  const [settings, live] = await Promise.all([readSettings(), liveModels()]);
+  const [settings, live, evals] = await Promise.all([readSettings(), liveModels(), readEvals()]);
   const known = new Set([...CLAUDE_MODELS, ...OPENAI_MODELS].map((m) => m.id));
   return json({
     aiModel: settings.aiModel,
     keys: keys(),
     extra: { anthropic: live.anthropic.filter((id) => !known.has(id)), openai: live.openai.filter((id) => !known.has(id)) },
     available: { anthropic: live.anthropic, openai: live.openai },
+    evals,
   });
 }
 
@@ -41,8 +48,54 @@ export async function POST(req: NextRequest) {
   const b = await body<Record<string, unknown>>(req, 200_000); // photos are sent by id, not inline
   if (!b) return json({ error: "Bad request." }, 400);
   const model = validModel(b.model) ? b.model : (await readSettings()).aiModel;
+  const label = model === "builtin" ? "Free rules" : (findModel(model)?.label ?? model);
+
+  // ---- AI team: one specialist run (works with the free rules too) ----
+  if (b.task === "specialist") {
+    const id = String(b.specialist) as SpecialistId;
+    if (!(id in SPECIALISTS) || !b.context || typeof b.context !== "object") return json({ error: "Bad request." }, 400);
+    const ctx = b.context as Context;
+    const input = (b.input ?? {}) as Input;
+    try {
+      if (model === "builtin") {
+        const c = check(id, fallback(id, input, ctx), ctx);
+        return json({ model, label, output: c.output, issues: c.issues, review: { ran: false, passed: true, problems: [], revised: false }, calls: 0 });
+      }
+      const r = await runSpecialist(model, id, input, ctx, { photo: isMediaId(b.photo) ? b.photo : undefined, order: (b.order ?? null) as SupportOrder, review: b.review !== false });
+      return json({ model, label, ...r });
+    } catch (e) {
+      const err = e instanceof AiError ? e : new AiError("The AI request failed.");
+      return json({ error: err.message }, err.status);
+    }
+  }
+
+  // ---- practice tests: score the selected model on fixed questions ----
+  if (b.task === "eval") {
+    const ctx = practiceContext();
+    const ps = practiceStore();
+    const review = b.review !== false && model !== "builtin";
+    const cases = [];
+    try {
+      for (const c of CASES) {
+        let raw: unknown;
+        if (model === "builtin") raw = fallback(c.specialist, c.input, ctx);
+        else {
+          const o = c.input.orderNumber ? ps.orders.find((x) => x.number === c.input.orderNumber) : undefined;
+          const order: SupportOrder = o ? { number: o.number, status: o.status, createdAt: o.createdAt, items: o.items.map((i) => `${i.qty}x ${i.title}`), firstName: o.customer.name.split(" ")[0], totalCents: o.totalCents } : null;
+          raw = (await runSpecialist(model, c.specialist, c.input, ctx, { order, review })).output;
+        }
+        cases.push(score(c, raw, ctx));
+      }
+    } catch (e) {
+      const err = e instanceof AiError ? e : new AiError("The practice test failed.");
+      return json({ error: err.message }, err.status);
+    }
+    const run = { at: new Date().toISOString(), model, label, review, average: Math.round(cases.reduce((a, c) => a + c.score, 0) / cases.length), cases };
+    await addEval(run);
+    return json(run);
+  }
+
   if (model === "builtin") return json({ error: "No AI model selected." }, 400);
-  const label = findModel(model)?.label ?? model;
 
   try {
     if (b.task === "assistant") {
@@ -52,7 +105,7 @@ export async function POST(req: NextRequest) {
         .slice(-12)
         .map((m) => ({ role: m.role, content: m.content.slice(0, 4000) }));
       if (!msgs.length || msgs[msgs.length - 1].role !== "user") return json({ error: "Bad request." }, 400);
-      const system = `${ASSISTANT_SYSTEM}\n\nThe owner is on the "${String(b.page ?? "dashboard").slice(0, 30)}" page.\nStore data (JSON):\n${JSON.stringify(b.store ?? {}).slice(0, 60_000)}`;
+      const system = `${ASSISTANT_SYSTEM}\n\n${playbook(["honesty", "voice", "merch", "testing", "pricing"])}\n\nFollow the store's "lessons" in the data: they are what this store has learned and override general advice.\n\nThe owner is on the "${String(b.page ?? "dashboard").slice(0, 30)}" page.\nStore data (JSON):\n${JSON.stringify(b.store ?? {}).slice(0, 60_000)}`;
       const out = await callModel(model, system, msgs, ASSISTANT_SCHEMA, { effort: "low" });
       return json({ model, label, ...(out as object) });
     }
