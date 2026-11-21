@@ -5,6 +5,7 @@ import { Download, Trash2, Upload } from "lucide-react";
 import { deleteStore, downloadBackup, downloadCsv, eraseEverything, restoreBackup, updateStore, useCurrentStore } from "@/lib/store";
 import { PageHeader, Panel } from "@/components/dashboard/PageHeader";
 import { AiModelPanel } from "@/components/dashboard/AiModelPanel";
+import { CostsPanel, PaymentsPanel, PoliciesPanel } from "@/components/dashboard/BusinessPanels";
 import { Button, Field, Toggle } from "@/components/ui";
 
 export default function SettingsPage() {
@@ -48,12 +49,18 @@ export default function SettingsPage() {
           </div>
         </Panel>
 
+        <PaymentsPanel />
+
         <Panel title="Shipping">
           <div className="grid gap-4 p-5 sm:grid-cols-2">
             <Field label="Flat rate (USD)" name="ship" inputMode="decimal" defaultValue={(store.shippingCents / 100).toFixed(2)} onBlur={(e) => updateStore(store.slug, (s) => ({ ...s, shippingCents: Math.max(0, Math.round(Number(e.target.value) * 100) || 0) }))} />
             <Field label="Free shipping over (USD)" name="free" inputMode="decimal" hint="Set to 0 to turn off free shipping" defaultValue={(store.freeShippingCents / 100).toFixed(2)} onBlur={(e) => updateStore(store.slug, (s) => ({ ...s, freeShippingCents: Math.max(0, Math.round(Number(e.target.value) * 100) || 0) }))} />
           </div>
         </Panel>
+
+        <CostsPanel store={store} />
+
+        <PoliciesPanel store={store} />
 
         <Panel title="Discount codes">
           <ul className="divide-y divide-border">

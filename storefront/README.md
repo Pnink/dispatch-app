@@ -141,13 +141,20 @@ Nothing changes until you click apply. Refunds and other exceptions are always f
 
 **Practice tests** score the team 0–100 on seven fixed questions about a sample candle shop (for example: don't invent a burn time; flag refund requests). Run them after changing model or memory and compare the scores. The history is kept in `data/evals.json`.
 
+## Payments, profit, tracking, policies
+
+- **Stripe:** add `STRIPE_SECRET_KEY` (start with a `sk_test_` key) and `PUBLIC_URL` to `.env.local`. Checkout then sends shoppers to Stripe's payment page, which takes card, Apple Pay and Google Pay. The order is saved only after the server confirms the payment with Stripe. That happens on the shopper's return and through the signed webhook at `/api/stripe/webhook`; set `STRIPE_WEBHOOK_SECRET` for it. Refunds on the Orders page go back through Stripe. Without a key, checkout stays in demo mode. **Settings → Payments & email** has the setup steps.
+- **Profit:** set each product's cost (what your supplier charges) on Products, and supplier shipping under Settings → Costs. Products, Orders and Today then show what you actually make. With Stripe, each order uses Stripe's real fee; otherwise the fee is estimated. Costs are never sent to shoppers.
+- **Tracking:** paste the supplier's tracking number into an order. The carrier is detected, the order is marked shipped, and the number appears on the shop's **Track your order** page (customers need the order number *and* their email). If `RESEND_API_KEY` and `MAIL_FROM` are set, it's also emailed, along with order receipts. Otherwise you get a ready-to-copy message.
+- **Policies:** the shipping, returns, privacy and terms pages are written from Settings → Business details and linked in the footer and at checkout. You can edit any of them. They're a standard starting point, not legal advice.
+
 ## Going live
 
-1. Real payments with Stripe Checkout (test mode first).
+1. Stripe: a test order with your `sk_test_` key, then switch to the live key and add the webhook.
 2. Hosting on your domain, behind HTTPS, with `OWNER_PASSWORD` set.
-3. A transactional email provider, so receipts and flows actually send.
-4. Tax and shipping settings per country, plus terms, privacy and returns pages.
+3. Email (Resend), so receipts and tracking go out automatically. Marketing flows still don't send.
+4. Sales tax: Stripe Tax can be switched on later if you need it.
 
 ## Tests
 
-`npm run build && npm run e2e` runs eight suites against fresh, empty data folders: the core loop, A/B tests, owner tools, security, AI models, photo-to-store, the AI team, and a restart to prove data persists. Screenshots go to `replica/clone-screens/`. Planning notes (recon, architecture, brand, parity) are in `replica/`.
+`npm run build && npm run e2e` runs nine suites against fresh, empty data folders: the core loop, A/B tests, owner tools, security, AI models, photo-to-store, the AI team, payments/profit/tracking/policies, and a restart to prove data persists. Screenshots go to `replica/clone-screens/`. Planning notes (recon, architecture, brand, parity) are in `replica/`.

@@ -4,7 +4,8 @@ import { Pencil, Plus, Sparkles, Trash2, X } from "lucide-react";
 import { draftProduct, uid } from "@/lib/ai";
 import { updateStore, useCurrentStore } from "@/lib/store";
 import type { Product, Store } from "@/lib/types";
-import { money } from "@/lib/format";
+import { cx, money } from "@/lib/format";
+import { unitProfit } from "@/lib/profit";
 import { PageHeader, Panel } from "@/components/dashboard/PageHeader";
 import { ProductArt } from "@/components/ProductArt";
 import { preparePhoto, uploadPhoto } from "@/lib/media-client";
@@ -39,6 +40,7 @@ export default function ProductsPage() {
                   <th className="px-2 font-medium">Inventory</th>
                   <th className="px-2 font-medium">Variants</th>
                   <th className="px-2 text-right font-medium">Price</th>
+                  <th className="px-2 text-right font-medium">Profit / sale</th>
                   <th className="px-5"><span className="sr-only">Actions</span></th>
                 </tr>
               </thead>
@@ -57,6 +59,12 @@ export default function ProductsPage() {
                     </td>
                     <td className="px-2 text-muted">{p.variants.length || "—"}</td>
                     <td className="px-2 text-right tabular-nums">{money(p.priceCents)}</td>
+                    <td className="px-2 text-right tabular-nums" data-unit-profit>
+                      {(() => {
+                        const u = unitProfit(p.priceCents, p.costCents, store);
+                        return u ? <span className={u.profit < 0 ? "text-danger" : ""}>{money(u.profit)} <span className="text-xs text-muted">({u.margin}%)</span></span> : <button onClick={() => setEditing(p)} className="text-xs text-muted underline">add cost</button>;
+                      })()}
+                    </td>
                     <td className="px-5 text-right">
                       <div className="flex justify-end gap-1">
                         <button onClick={() => setEditing(p)} aria-label={`Edit ${p.title}`} className="rounded p-1.5 text-muted hover:bg-surface hover:text-text"><Pencil className="h-4 w-4" /></button>
@@ -85,6 +93,7 @@ function Editor({ store, initial, onClose }: { store: Store; initial: Product; o
   const isNew = !store.products.some((p) => p.id === initial.id);
   const [p, setP] = useState(initial);
   const [price, setPrice] = useState(initial.priceCents ? (initial.priceCents / 100).toFixed(2) : "");
+  const [cost, setCost] = useState(initial.costCents !== undefined ? (initial.costCents / 100).toFixed(2) : "");
   const [variants, setVariants] = useState(initial.variants.join(", "));
   const [drafting, setDrafting] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -111,12 +120,15 @@ function Editor({ store, initial, onClose }: { store: Store; initial: Product; o
     const cents = Math.round(Number(price) * 100);
     if (!price || !Number.isFinite(cents) || cents <= 0) errs.price = "Enter a price above zero.";
     if (p.stock < 0) errs.stock = "Stock can't be negative.";
+    const costCents = cost.trim() === "" ? undefined : Math.round(Number(cost) * 100);
+    if (costCents !== undefined && (!Number.isFinite(costCents) || costCents < 0)) errs.cost = "Enter what your supplier charges, e.g. 8.50";
     setErrors(errs);
     if (Object.keys(errs).length) return;
     const product: Product = {
       ...p,
       title: p.title.trim(),
       priceCents: cents,
+      costCents,
       variants: variants.split(",").map((v) => v.trim()).filter(Boolean),
       seoTitle: p.seoTitle || `${p.title.trim()} | ${store.name}`,
     };
@@ -149,6 +161,18 @@ function Editor({ store, initial, onClose }: { store: Store; initial: Product; o
           <div className="grid grid-cols-2 gap-4">
             <Field label="Price (USD)" name="price" inputMode="decimal" value={price} onChange={(e) => setPrice(e.target.value)} error={errors.price} />
             <Field label="Stock" name="stock" type="number" min={0} value={String(p.stock)} onChange={(e) => setP({ ...p, stock: Number(e.target.value) })} error={errors.stock} />
+          </div>
+          <div>
+            <Field label="Your cost (USD)" name="cost" inputMode="decimal" value={cost} onChange={(e) => setCost(e.target.value)} error={errors.cost} hint="What your supplier charges you for one. Private: shoppers never see it." />
+            {(() => {
+              const c = cost.trim() === "" ? undefined : Math.round(Number(cost) * 100);
+              const u = Number(price) > 0 && c !== undefined && Number.isFinite(c) ? unitProfit(Math.round(Number(price) * 100), c, store) : null;
+              return u ? (
+                <p className={cx("mt-1.5 text-sm", u.profit < 0 ? "text-danger" : "text-success")} data-editor-profit>
+                  You make <strong>{money(u.profit)}</strong> per sale ({u.margin}%) after your cost, {store.costs.supplierShippingCents ? `${money(store.costs.supplierShippingCents)} supplier shipping, ` : ""}and the ~{store.costs.feePercent}% + {store.costs.feeFixedCents}¢ payment fee.
+                </p>
+              ) : null;
+            })()}
           </div>
           <Field label="Variants" name="variants" value={variants} onChange={(e) => setVariants(e.target.value)} hint="Comma separated, e.g. S, M, L" />
           <Field label="Search title (SEO)" name="seo" value={p.seoTitle} onChange={(e) => setP({ ...p, seoTitle: e.target.value })} hint={`${p.seoTitle.length}/60 characters`} />

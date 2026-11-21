@@ -6,6 +6,7 @@ import { AlertCircle, ArrowRight, CheckCircle2, ExternalLink, Lightbulb, PartyPo
 import { updateStore, useCurrentStore } from "@/lib/store";
 import { todayBrief, type TodayItem } from "@/lib/today";
 import { dateShort, money, cx } from "@/lib/format";
+import { totalProfit } from "@/lib/profit";
 import { Panel } from "@/components/dashboard/PageHeader";
 import { OrderStatusBadge } from "@/components/dashboard/OrderStatusBadge";
 import { LinkButton } from "@/components/ui";
@@ -102,7 +103,7 @@ function Home() {
         {[
           ["Revenue", money(revenue)],
           ["Orders", String(live.length)],
-          ["Average order", money(aov)],
+          ["Profit", (() => { const t = totalProfit(store.orders, store); return t.missing && !t.profit ? "add costs" : money(t.profit); })()],
           ["Email list", String(store.subscribers.length)],
         ].map(([k, v]) => (
           <div key={k} className="rounded-xl border border-border bg-bg p-5">

@@ -1,9 +1,9 @@
 "use client";
 import Link from "next/link";
-import { useState } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { Suspense, useState } from "react";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { Lock } from "lucide-react";
-import { placeOrder, quote, useCart, useShopperStore, writeCart, type Quote } from "@/lib/store";
+import { placeOrder, quote, useCart, useShopperStore, useStorefront, writeCart, type Quote } from "@/lib/store";
 import { cartTotals } from "@/lib/commerce";
 import type { CardInput } from "@/lib/payments";
 import type { Customer } from "@/lib/types";
@@ -14,9 +14,20 @@ import { headingFont } from "@/components/storefront";
 type Method = "card" | "apple" | "google" | "paypal";
 
 export default function CheckoutPage() {
+  return (
+    <Suspense>
+      <Checkout />
+    </Suspense>
+  );
+}
+
+function Checkout() {
   const { slug } = useParams<{ slug: string }>();
   const router = useRouter();
   const store = useShopperStore(slug);
+  const mode = useStorefront(slug).checkout ?? "demo";
+  const live = mode !== "demo"; // Stripe: the shopper pays on Stripe's page
+  const canceled = useSearchParams().get("canceled") === "1";
   const cart = useCart(slug);
   const [c, setC] = useState<Customer>({ name: "", email: "", address: "", city: "", zip: "", country: "US" });
   const [method, setMethod] = useState<Method>("card");
@@ -69,11 +80,17 @@ export default function CheckoutPage() {
     setBusy(true);
     const payment: CardInput = method === "card" ? { method: "card", ...card } : { method };
     const res = await placeOrder(store.slug, lines, c, payment, applied);
-    setBusy(false);
     if (!res.ok) {
+      setBusy(false);
       setPayError(res.error);
       return;
     }
+    if ("redirect" in res) {
+      window.location.href = res.redirect; // to Stripe; the cart is cleared once payment is confirmed
+      return;
+    }
+    setBusy(false);
+    if (!("order" in res)) return;
     writeCart(store.slug, []);
     router.push(`${base}/order/${res.order.id}`);
   };
@@ -109,6 +126,16 @@ export default function CheckoutPage() {
             </div>
           </div>
         </section>
+        {live ? (
+          <section>
+            <h2 className="font-medium">Payment</h2>
+            {canceled && <p className="mt-2 rounded-md bg-[var(--s-soft)] p-3 text-sm" role="status">Payment was cancelled — nothing was charged. You can try again.</p>}
+            <p className="mt-3 flex items-start gap-2 rounded-md bg-[var(--s-soft)] p-4 text-sm opacity-90" data-checkout-mode={mode}>
+              <Lock className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
+              <span>Next you&apos;ll pay on a secure page by Stripe: card, Apple Pay or Google Pay. Your card details go straight to Stripe and are never stored here.{mode === "stripe-test" && <strong className="block pt-1">Test mode: use card 4242 4242 4242 4242, any future date and CVC. No real money moves.</strong>}</span>
+            </p>
+          </section>
+        ) : (
         <section>
           <h2 className="font-medium">Payment</h2>
           <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4" role="radiogroup" aria-label="Payment method">
@@ -138,10 +165,15 @@ export default function CheckoutPage() {
             <p className="mt-4 rounded-md bg-[var(--s-soft)] p-4 text-sm opacity-80">You&apos;ll confirm with {methods.find((m) => m.id === method)!.label} (simulated) when you place the order.</p>
           )}
         </section>
+        )}
         {payError && <div role="alert" className="rounded-md border border-red-600/40 bg-red-600/10 p-3 text-sm text-red-700">{payError}</div>}
         <button type="submit" disabled={busy} className="flex h-12 w-full items-center justify-center gap-2 rounded-md bg-[var(--s-accent)] font-medium text-[var(--s-on-accent)] hover:opacity-90 disabled:opacity-60">
-          {busy ? <><span className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" /> Processing…</> : <><Lock className="h-4 w-4" /> Pay {money(t.total)}</>}
+          {busy ? <><span className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" /> Processing…</> : <><Lock className="h-4 w-4" /> {live ? `Continue to payment · ${money(t.total)}` : `Pay ${money(t.total)}`}</>}
         </button>
+        <p className="text-center text-xs opacity-60">
+          By placing your order you agree to our <Link href={`${base}/policies/terms`} className="underline">terms</Link>. See our{" "}
+          <Link href={`${base}/policies/shipping`} className="underline">shipping</Link> and <Link href={`${base}/policies/returns`} className="underline">returns</Link> policies.
+        </p>
       </form>
 
       <aside className="h-fit rounded-xl bg-[var(--s-soft)] p-5 lg:sticky lg:top-6">

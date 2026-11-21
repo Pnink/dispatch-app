@@ -193,7 +193,8 @@ export function toAssistantAction(a: AiAction | null, store: Store): AssistantAc
     }
     case "refund_order": {
       const o = store.orders.find((x) => x.number === a.number);
-      return o && o.status !== "refunded" ? { label: `Refund #${o.number}`, apply: (s) => refundOrder(s, o.id) } : undefined;
+      // card payments are refunded from the Orders page, which refunds through Stripe
+      return o && o.status !== "refunded" && !o.payment ? { label: `Refund #${o.number}`, apply: (s) => refundOrder(s, o.id) } : undefined;
     }
     case "publish":
       return store.published ? undefined : { label: "Publish store", apply: (s) => ({ ...s, published: true }) };

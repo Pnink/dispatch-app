@@ -49,3 +49,13 @@ Turn on 2-factor authentication (an authenticator app, not SMS) and use unique p
 - **Rate limits live in memory** and reset on restart. That's fine for one server, but not across several.
 - **The demo checkout posts test card numbers to the server.** Stripe Checkout replaces this, and that change is required before taking real cards.
 - **No automated security scanning.** Consider a professional review before handling real volume.
+
+## Payments
+
+- Card numbers never touch this app. Shoppers pay on Stripe's own page (Stripe Checkout).
+- An order is saved only after the server asks Stripe whether it's paid. The browser's word is never trusted.
+- Webhooks must carry a valid `Stripe-Signature` (HMAC-SHA256 with your webhook secret) and be less than 5 minutes old. Forged and replayed webhooks are rejected.
+- Recording is idempotent: the return page and the webhook can both fire, and only one order is created.
+- Prices, discounts and shipping are worked out on the server and sent to Stripe as fixed amounts.
+- Supplier costs, pending checkouts and order records are never in the public store data.
+- The order lookup needs both the order number and the email used, is limited to 10 tries a minute, and never shows the address.

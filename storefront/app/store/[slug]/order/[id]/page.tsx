@@ -25,7 +25,7 @@ export default function OrderConfirmed() {
     <div className="mx-auto max-w-2xl px-4 py-16 sm:px-6">
       <CheckCircle2 className="h-12 w-12 text-[var(--s-accent)]" aria-hidden />
       <h1 className={cx("mt-4 text-4xl", headingFont(store))}>Thank you, {order.customer.name.split(" ")[0]}!</h1>
-      <p className="mt-3 opacity-75">Order #{order.number} is confirmed. A receipt is on its way to {order.customer.email} (simulated).</p>
+      <p className="mt-3 opacity-75">Order #{order.number} is confirmed. Keep your order number: you can <Link href={`${base}/track`} className="underline">track your order</Link> any time with it and {order.customer.email}.</p>
 
       {store.apps.loyalty && order.pointsEarned > 0 && (
         <div className="mt-8 flex items-center gap-4 rounded-xl bg-[var(--s-accent)] p-5 text-[var(--s-on-accent)]">

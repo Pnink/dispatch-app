@@ -3,7 +3,7 @@
  * The server never trusts prices, totals or stock sent by a browser: it recomputes them here from its own data.
  */
 import { recordConversion, recordExposures, shopperView } from "./experiments";
-import type { CartLine, Customer, Order, Review, Store, VariantId } from "./types";
+import type { CartLine, Customer, Order, OrderItem, Review, Store, VariantId } from "./types";
 
 export function cartTotals(store: Store, lines: CartLine[], code?: string) {
   const subtotal = lines.reduce((a, l) => {
@@ -20,15 +20,17 @@ export function cartTotals(store: Store, lines: CartLine[], code?: string) {
  * What a shopper's browser is allowed to see: no orders, customers, email list, loyalty balances,
  * email flow drafts, the original prompt, or experiment results.
  */
-export type PublicStore = Omit<Store, "orders" | "subscribers" | "loyalty" | "flows" | "prompt" | "lessons">;
+export type PublicStore = Omit<Store, "orders" | "subscribers" | "loyalty" | "flows" | "prompt" | "lessons" | "costs" | "pending">;
 
 export function publicView(s: Store): PublicStore {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const { orders, subscribers, loyalty, flows, prompt, lessons, ...rest } = s;
+  const { orders, subscribers, loyalty, flows, prompt, lessons, costs, pending, ...rest } = s;
   return {
     ...rest,
     discounts: [], // codes stay secret; checkout asks the server to check one
-    products: s.products.filter((p) => p.status === "active"),
+    // supplier costs never leave the owner app
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    products: s.products.filter((p) => p.status === "active").map(({ costCents, ...p }) => p),
     experiments: s.experiments
       .filter((e) => e.status === "running")
       .map((e) => ({ ...e, variants: e.variants.map((v) => ({ ...v, views: 0, conversions: 0, revenueCents: 0, simulatedViews: 0 })) as typeof e.variants })),
@@ -37,7 +39,7 @@ export function publicView(s: Store): PublicStore {
 
 /** A storefront only needs the shopper-visible shape; fill the private fields with empties. */
 export function asStore(p: PublicStore): Store {
-  return { ...p, orders: [], subscribers: [], loyalty: {}, flows: [], prompt: "", lessons: [] };
+  return { ...p, orders: [], subscribers: [], loyalty: {}, flows: [], prompt: "", lessons: [], costs: { supplierShippingCents: 0, feePercent: 0, feeFixedCents: 0 }, pending: [] };
 }
 
 // ---------- input validation (everything from a browser is untrusted) ----------
@@ -90,17 +92,28 @@ export function quoteOrder(raw: Store, input: OrderInput): { error: string } | {
   return { totals, view };
 }
 
-export function commitOrder(raw: Store, view: Store, input: OrderInput, totals: ReturnType<typeof cartTotals>, paymentLabel: string, id: string): { store: Store; order: Order } {
+/** What the shopper is buying, priced as they see it (incl. A/B price), with your cost per unit. */
+export function orderItems(view: Store, lines: CartLine[]): OrderItem[] {
+  return lines.map((l) => {
+    const p = view.products.find((x) => x.id === l.productId)!;
+    return { productId: p.id, title: p.title, variant: l.variant, qty: l.qty, unitCents: p.priceCents, unitCostCents: p.costCents };
+  });
+}
+
+type Totals = { subtotal: number; discountCents: number; shippingCents: number; total: number };
+
+/** Payment fee estimate from your settings (Stripe's standard US card rate by default). */
+export const estimateFee = (s: Store, total: number) => Math.round((total * s.costs.feePercent) / 100) + s.costs.feeFixedCents;
+
+export function commitOrder(raw: Store, items: OrderItem[], input: OrderInput, totals: Totals, paymentLabel: string, id: string, extra: Partial<Order> = {}): { store: Store; order: Order } {
   const points = raw.apps.loyalty ? Math.floor(totals.total / 100) : 0;
   const number = 1001 + raw.orders.length;
+  const known = items.every((i) => i.unitCostCents !== undefined);
   const order: Order = {
     id,
     number,
     customer: input.customer,
-    items: input.lines.map((l) => {
-      const p = view.products.find((x) => x.id === l.productId)!;
-      return { productId: p.id, title: p.title, variant: l.variant, qty: l.qty, unitCents: p.priceCents };
-    }),
+    items,
     subtotalCents: totals.subtotal,
     discountCents: totals.discountCents,
     shippingCents: totals.shippingCents,
@@ -109,6 +122,10 @@ export function commitOrder(raw: Store, view: Store, input: OrderInput, totals: 
     createdAt: new Date().toISOString(),
     pointsEarned: points,
     paymentMethod: paymentLabel,
+    costCents: known ? items.reduce((a, i) => a + (i.unitCostCents ?? 0) * i.qty, 0) + raw.costs.supplierShippingCents : undefined,
+    feeCents: estimateFee(raw, totals.total),
+    feeEstimated: true,
+    ...extra,
   };
   // only real exposures count: previews never touch results
   const exposed = input.exposed.filter((e) => !input.forced[e]);

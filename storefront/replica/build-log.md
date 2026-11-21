@@ -51,3 +51,11 @@ refunds are flagged; memory stays private; planner → test → rollout → less
 Auto model (2026-11-20): new default "auto". A free rule-based router picks small, mid or top per request (chat is sorted
 by the message), chooses the company by practice-test score, has the other company review, and switches company if an API
 fails. Covered by `e2e/ai-team.cjs`. All 8 suites pass.
+
+Payments + profit + tracking + policies (2026-11-21):
+- **Stripe Checkout:** called directly over HTTPS, no SDK. Webhook signatures are checked by hand. Orders are idempotent across the return page and the webhook. Refunds go through Stripe.
+- **Profit:** product costs, supplier shipping and fees, shown on Products, Orders and Today.
+- **Tracking:** the carrier is detected from the number; tracking can be emailed (Resend, optional); customers have a lookup page.
+- **Policies:** four policy pages built from templates, editable by the owner.
+
+Found while testing: the checkout ID check rejected underscores, so test IDs were refused. `e2e/business.cjs` (Stripe and email test doubles) passes, and all 9 suites pass.

@@ -27,11 +27,14 @@ start() { # port, data dir, password
 start 3100 "$DATA_DIR" ""
 start 3101 "$PW_DATA" "$OWNER_PASSWORD"
 AI_FAKE=1 ANTHROPIC_API_KEY=sk-test-anthropic OPENAI_API_KEY=sk-test-openai start 3102 "$WORK/data-ai" ""
+STRIPE_FAKE=1 MAIL_FAKE=1 STRIPE_WEBHOOK_SECRET=whsec_test_e2e start 3103 "$WORK/data-pay" ""
 
 for suite in walkthrough experiments owner-tools security ai photos ai-team; do
   echo "== $suite"
   BASE_URL=http://localhost:3100 BASE_URL_PW=http://localhost:3101 BASE_URL_AI=http://localhost:3102 node "e2e/$suite.cjs" "$SHOTS"
 done
+echo "== business (Stripe test double, profit, tracking, policies)"
+BASE_URL=http://localhost:3103 STRIPE_WEBHOOK_SECRET=whsec_test_e2e node e2e/business.cjs "$SHOTS"
 
 echo "== persistence across restart"
 BEFORE="$(curl -s http://localhost:3100/api/admin/db | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{const j=JSON.parse(s);console.log(j.stores.length+" stores, rev "+j.rev)})')"

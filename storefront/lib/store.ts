@@ -228,6 +228,27 @@ export function setOrderStatus(slug: string, orderId: string, status: OrderStatu
   updateStore(slug, (s) => (status === "refunded" ? refundOrder(s, orderId) : { ...s, orders: s.orders.map((o) => (o.id === orderId ? { ...o, status } : o)) }));
 }
 
+/** Order steps done on the server (real refunds, tracking + customer email). Pulls the result into the app. */
+export async function orderAction(slug: string, orderId: string, action: "refund" | "tracking", extra: Record<string, unknown> = {}) {
+  // send anything unsaved first, so the server works on the latest data
+  if (pending.length) {
+    if (timer) clearTimeout(timer);
+    await flush();
+  }
+  const res = await api("/api/admin/orders", { method: "POST", body: JSON.stringify({ slug, orderId, action, ...extra }) });
+  const data = await res.json().catch(() => ({}));
+  if (res.ok) await pull();
+  return res.ok ? { ok: true as const, ...data } : { ok: false as const, error: (data.error as string) || "That didn't work." };
+}
+
+async function pull() {
+  const res = await fetch("/api/admin/db", { cache: "no-store" });
+  if (!res.ok) return;
+  const data = (await res.json()) as { rev: number; savedAt: string; stores: Store[] };
+  const merged = pending.reduce((db, fn) => fn(db), { stores: data.stores.map(withDefaults) } as DB);
+  set({ db: merged, rev: data.rev, savedAt: data.savedAt });
+}
+
 /** Delete every store and order (Settings → Danger zone). Backups on disk are kept. */
 export function eraseEverything() {
   change(() => ({ stores: [] }));
@@ -235,7 +256,8 @@ export function eraseEverything() {
 
 // ---------- storefront (public, any visitor) ----------
 type Closed = { name: string; palette: Store["palette"]; font: Store["font"] };
-export type Front = { status: "loading" | "ready" | "missing" | "closed" | "error"; store?: Store; closed?: Closed };
+/** checkout: "stripe" (live), "stripe-test" (Stripe test keys) or "demo" (no Stripe key yet) */
+export type Front = { status: "loading" | "ready" | "missing" | "closed" | "error"; store?: Store; closed?: Closed; checkout?: "stripe" | "stripe-test" | "demo" };
 const fronts = new Map<string, Front>();
 const LOADING: Front = { status: "loading" };
 
@@ -247,7 +269,11 @@ async function loadFront(slug: string) {
     else if (!res.ok) fronts.set(slug, { status: "error" });
     else {
       const data = await res.json();
-      fronts.set(slug, data.published === false ? { status: "closed", closed: data as Closed } : { status: "ready", store: withDefaults(asStore(data as PublicStore)) });
+      if (data.published === false) fronts.set(slug, { status: "closed", closed: data as Closed });
+      else {
+        const { checkout, ...pub } = data;
+        fronts.set(slug, { status: "ready", store: withDefaults(asStore(pub as PublicStore)), checkout });
+      }
     }
   } catch {
     fronts.set(slug, { status: "error" });
@@ -304,11 +330,12 @@ export async function quote(slug: string, lines: CartLine[], code?: string): Pro
   }
 }
 
-export type PlaceOrderResult = { ok: true; order: Order } | { ok: false; error: string };
+export type PlaceOrderResult = { ok: true; order: Order } | { ok: true; redirect: string } | { ok: false; error: string };
 export async function placeOrder(slug: string, lines: CartLine[], customer: Customer, payment: CardInput, code?: string): Promise<PlaceOrderResult> {
   try {
     const r = await post(slug, "order", { lines, customer, payment, code, visitor: visitorId(), exposed: seenExperiments(slug), forced: forcedVariants() });
     if (!r.ok) return { ok: false, error: r.data.error || "We couldn't place that order." };
+    if (typeof r.data.redirect === "string") return { ok: true, redirect: r.data.redirect }; // Stripe's payment page
     const order = r.data.order as Order;
     try {
       sessionStorage.setItem(`${P}:order:${order.id}`, JSON.stringify(order)); // shown on the confirmation page
@@ -319,6 +346,35 @@ export async function placeOrder(slug: string, lines: CartLine[], customer: Cust
     return { ok: true, order };
   } catch {
     return { ok: false, error: "Couldn't reach the store. Check your connection and try again." };
+  }
+}
+
+/** Back from Stripe: the server checks with Stripe and records the order. */
+export async function confirmCheckout(slug: string, session: string): Promise<PlaceOrderResult> {
+  try {
+    const r = await post(slug, "confirm", { session });
+    if (!r.ok) return { ok: false, error: r.data.error || "We couldn't confirm your payment." };
+    const order = r.data.order as Order;
+    try {
+      sessionStorage.setItem(`${P}:order:${order.id}`, JSON.stringify(order));
+    } catch {
+      /* ignore */
+    }
+    writeCart(slug, []);
+    loadFront(slug);
+    return { ok: true, order };
+  } catch {
+    return { ok: false, error: "Couldn't reach the store. Refresh this page to try again." };
+  }
+}
+
+export type TrackResult = { number: number; status: string; createdAt: string; items: { title: string; variant?: string; qty: number }[]; tracking: { number: string; carrier: string; url: string; addedAt: string } | null };
+export async function trackOrder(slug: string, number: string, email: string): Promise<{ ok: true; data: TrackResult } | { ok: false; error: string }> {
+  try {
+    const r = await post(slug, "track", { number: Number(number.replace(/\D/g, "")), email });
+    return r.ok ? { ok: true, data: r.data as TrackResult } : { ok: false, error: r.data.error || "Couldn't look that up." };
+  } catch {
+    return { ok: false, error: "Couldn't reach the store." };
   }
 }
 

@@ -271,13 +271,17 @@ export function StoreFooter({ store, base }: { store: Store; base: string }) {
         <ul className="space-y-1.5 opacity-80">
           <li><Link href={`${base}#shop`} className="hover:underline">Shop all</Link></li>
           <li><Link href={`${base}/cart`} className="hover:underline">Cart</Link></li>
+          <li><Link href={`${base}/track`} className="hover:underline">Track your order</Link></li>
+          {store.business?.email && <li><a href={`mailto:${store.business.email}`} className="hover:underline">Contact us</a></li>}
         </ul>
-        <ul className="space-y-1.5 opacity-80">
-          <li>Shipping &amp; returns</li>
-          <li>Contact us</li>
+        <ul className="space-y-1.5 opacity-80" aria-label="Policies">
+          <li><Link href={`${base}/policies/shipping`} className="hover:underline">Shipping policy</Link></li>
+          <li><Link href={`${base}/policies/returns`} className="hover:underline">Returns &amp; refunds</Link></li>
+          <li><Link href={`${base}/policies/privacy`} className="hover:underline">Privacy policy</Link></li>
+          <li><Link href={`${base}/policies/terms`} className="hover:underline">Terms of service</Link></li>
         </ul>
       </div>
-      <div className="mx-auto max-w-6xl px-4 pb-8 text-xs opacity-60 sm:px-6">© 2026 {store.name}</div>
+      <div className="mx-auto max-w-6xl px-4 pb-8 text-xs opacity-60 sm:px-6">© {new Date().getFullYear()} {store.business?.legalName || store.name}</div>
     </footer>
   );
 }

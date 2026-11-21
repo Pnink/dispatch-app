@@ -39,6 +39,8 @@ export type Product = {
   bullets?: string[];
   /** search-result description (SEO) */
   metaDescription?: string;
+  /** what the supplier charges you for one (private, never shown to shoppers) */
+  costCents?: number;
 };
 
 export type Review = {
@@ -55,6 +57,8 @@ export type OrderItem = {
   variant?: string;
   qty: number;
   unitCents: number;
+  /** supplier cost per unit when the order was placed */
+  unitCostCents?: number;
 };
 
 export type Customer = {
@@ -81,6 +85,32 @@ export type Order = {
   createdAt: string;
   pointsEarned: number;
   paymentMethod: string;
+  /** set when paid through Stripe (needed for refunds) */
+  payment?: { provider: "stripe"; session: string; paymentIntent?: string; test?: boolean };
+  /** what this order cost you: supplier items + supplier shipping, and the payment fee (actual from Stripe, else estimated) */
+  costCents?: number;
+  feeCents?: number;
+  feeEstimated?: boolean;
+  tracking?: Tracking;
+};
+
+export type Tracking = { number: string; carrier: string; url: string; addedAt: string; emailed?: boolean };
+
+export type PolicyKind = "shipping" | "returns" | "privacy" | "terms";
+
+/** Shown on the policy pages. */
+export type Business = { legalName: string; email: string; processingDays: string; deliveryDays: string; returnDays: number; country: string };
+
+/** Private: what selling costs you. */
+export type Costs = { supplierShippingCents: number; feePercent: number; feeFixedCents: number };
+
+/** A Stripe checkout that hasn't been paid yet (private). */
+export type PendingCheckout = {
+  id: string; // Stripe Checkout Session id
+  createdAt: string;
+  input: { lines: CartLine[]; customer: Customer; code?: string; visitor: string; exposed: string[]; forced: Record<string, VariantId> };
+  items: OrderItem[];
+  totals: { subtotal: number; discountCents: number; shippingCents: number; total: number };
 };
 
 export type EmailFlowKind =
@@ -165,6 +195,11 @@ export type Store = {
   faqs: { q: string; a: string }[];
   subscribers: string[];
   lessons: Lesson[];
+  /** custom policy text; empty = the standard template filled from your settings */
+  policies: Partial<Record<PolicyKind, string>>;
+  business: Business;
+  costs: Costs;
+  pending: PendingCheckout[];
   published: boolean;
   createdAt: string;
 };
